@@ -1,0 +1,60 @@
+import { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import './AuthPage.css';
+
+function Eye({ crossed }) {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>{crossed && <path d="M3 3l18 18"/>}</svg>;
+}
+
+export default function AuthPage() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const register = pathname === '/register';
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  function change(e) {
+    setForm(old => ({ ...old, [e.target.name]: e.target.value }));
+    setError(''); setNotice('');
+  }
+  function switchTo(next) {
+    setError(''); setNotice('');
+    navigate(next === 'register' ? '/register' : '/login');
+  }
+  function submit(e) {
+    e.preventDefault();
+    if (register && form.name.trim().length < 2) return setError('Please enter your full name.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return setError('Please enter a valid email address.');
+    if (form.password.length < 8) return setError('Password must be at least 8 characters.');
+    if (register && form.password !== form.confirm) return setError('Passwords do not match.');
+    setError('');
+    setNotice(register ? 'Form validated. Firebase registration is not connected yet.' : 'Form validated. Firebase sign-in is not connected yet.');
+  }
+
+  return <main className="auth-page">
+    <div className="auth-container">
+      <button className="auth-brand" type="button" onClick={() => navigate('/')}>SHOES<span>.</span></button>
+      <section className="auth-card" aria-label={register ? 'Sign up' : 'Sign in'}>
+        <div className="auth-top"><span className="auth-eyebrow">WELCOME TO SHOES</span><h1>{register ? 'Create your account.' : 'Welcome back.'}</h1><p>{register ? 'Join the movement. Discover your next favorite pair.' : 'Sign in to continue your sneaker journey.'}</p></div>
+        <div className="auth-tabs"><button type="button" className={!register ? 'active' : ''} onClick={() => switchTo('login')}>Sign In</button><button type="button" className={register ? 'active' : ''} onClick={() => switchTo('register')}>Sign Up</button></div>
+        <form className="auth-form" onSubmit={submit}>
+          {register && <div className="auth-field"><label htmlFor="auth-name">Full Name</label><input id="auth-name" name="name" value={form.name} onChange={change} placeholder="Enter your full name" autoComplete="name" required /></div>}
+          <div className="auth-field"><label htmlFor="auth-email">Email Address</label><input id="auth-email" type="email" name="email" value={form.email} onChange={change} placeholder="you@example.com" autoComplete="email" required /></div>
+          <div className="auth-field"><label htmlFor="auth-password">Password</label><div className="auth-password"><input id="auth-password" name="password" type={showPassword ? 'text' : 'password'} value={form.password} onChange={change} placeholder="At least 8 characters" autoComplete={register ? 'new-password' : 'current-password'} required minLength={8}/><button type="button" className="auth-eye" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}><Eye crossed={!showPassword}/></button></div></div>
+          {register && <div className="auth-field"><label htmlFor="auth-confirm">Confirm Password</label><div className="auth-password"><input id="auth-confirm" name="confirm" type={showConfirm ? 'text' : 'password'} value={form.confirm} onChange={change} placeholder="Confirm your password" autoComplete="new-password" required/><button type="button" className="auth-eye" onClick={() => setShowConfirm(v => !v)} aria-label={showConfirm ? 'Hide confirmation password' : 'Show confirmation password'}><Eye crossed={!showConfirm}/></button></div></div>}
+          {!register && <div className="auth-options"><label className="auth-remember"><input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)}/> Remember me</label><button type="button" className="auth-link" onClick={() => setNotice('Password reset will be available after Firebase integration.')}>Forgot password?</button></div>}
+          {error && <p className="auth-error" role="alert">{error}</p>}{notice && <p className="auth-success" role="status">{notice}</p>}
+          <button type="submit" className="auth-submit">{register ? 'Create Account →' : 'Sign In →'}</button>
+        </form>
+        <div className="auth-divider"><span>OR CONTINUE WITH</span></div>
+        <button className="auth-google" type="button" onClick={() => setNotice('Google sign-in will be available after Firebase integration.')}><svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.25 5.48-4.76 7.18l7.73 6C44.42 38.03 46.98 31.88 46.98 24.55z"/><path fill="#FBBC05" d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.2A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Continue with Google</button>
+        <p className="auth-switch">{register ? 'Already have an account?' : "Don't have an account?"} <button type="button" onClick={() => switchTo(register ? 'login' : 'register')}>{register ? 'Sign In' : 'Sign Up'}</button></p>
+      </section>
+      <p className="auth-bottom">© {new Date().getFullYear()} SHOES. All rights reserved.</p>
+    </div>
+  </main>;
+}
