@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
@@ -10,6 +11,7 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
+
 import { auth, googleProvider } from "./firebase";
 import "./AuthPage.css";
 
@@ -33,16 +35,48 @@ function Eye({ crossed }) {
   );
 }
 
+function GoogleIcon() {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 48 48"
+      aria-hidden="true"
+    >
+      <path
+        fill="#EA4335"
+        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+      />
+      <path
+        fill="#4285F4"
+        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.25 5.48-4.76 7.18l7.73 6C44.42 38.03 46.98 31.88 46.98 24.55z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.2A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"
+      />
+      <path
+        fill="#34A853"
+        d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"
+      />
+    </svg>
+  );
+}
+
 function getErrorMessage(error) {
   const messages = {
     "auth/email-already-in-use":
-      "This email is already registered.",
+      "This email is already registered. Try signing in.",
     "auth/invalid-email":
       "Please enter a valid email address.",
     "auth/weak-password":
-      "Your password is too weak.",
+      "Your password is too weak. Use at least 8 characters.",
     "auth/invalid-credential":
-      "Incorrect email or password.",
+      "Incorrect email or password. If you registered with Google, use Continue with Google.",
+    "auth/wrong-password":
+      "Incorrect password. Please try again.",
+    "auth/user-not-found":
+      "No account found with this email. Try signing up.",
     "auth/user-disabled":
       "This account has been disabled.",
     "auth/too-many-requests":
@@ -53,15 +87,24 @@ function getErrorMessage(error) {
       "Google popup was blocked by your browser.",
     "auth/popup-closed-by-user":
       "Google sign-in was cancelled.",
+    "auth/cancelled-popup-request":
+      "Google sign-in was interrupted. Try again.",
     "auth/unauthorized-domain":
       "This domain is not authorized in Firebase.",
     "auth/operation-not-allowed":
-      "This sign-in method is not enabled.",
+      "This sign-in method is not enabled in Firebase.",
+    "auth/invalid-api-key":
+      "Firebase API key is invalid. Check firebase.js.",
+    "auth/configuration-not-found":
+      "Firebase Authentication is not configured correctly.",
+    "auth/account-exists-with-different-credential":
+      "This email uses another sign-in method. Try your original method.",
+    "auth/requires-recent-login":
+      "Please sign in again before continuing.",
   };
 
   return (
     messages[error?.code] ||
-    error?.message ||
     "Something went wrong. Please try again."
   );
 }
@@ -86,12 +129,13 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
+  const from = location.state?.from;
   const destination =
-    location.state?.from?.pathname?.startsWith("/") &&
-    !["/login", "/register"].includes(
-      location.state.from.pathname
-    )
-      ? location.state.from.pathname
+    typeof from?.pathname === "string" &&
+    from.pathname.startsWith("/") &&
+    !from.pathname.startsWith("//") &&
+    !["/login", "/register"].includes(from.pathname)
+      ? `${from.pathname}${from.search || ""}${from.hash || ""}`
       : "/shop";
 
   function change(event) {
@@ -109,10 +153,21 @@ export default function AuthPage() {
   function switchTo(next) {
     setError("");
     setNotice("");
+    setShowPassword(false);
+    setShowConfirm(false);
 
     navigate(next === "register" ? "/register" : "/login", {
       state: location.state,
     });
+  }
+
+  async function configurePersistence() {
+    await setPersistence(
+      auth,
+      remember
+        ? browserLocalPersistence
+        : browserSessionPersistence
+    );
   }
 
   async function submit(event) {
@@ -123,58 +178,78 @@ export default function AuthPage() {
     setError("");
     setNotice("");
 
+    const email = form.email.trim().toLowerCase();
+
     if (register && form.name.trim().length < 2) {
       setError("Please enter your full name.");
       return;
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setError("Please enter a valid email address.");
       return;
     }
 
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (!form.password) {
+      setError("Please enter your password.");
       return;
     }
 
-    if (register && form.password !== form.confirm) {
-      setError("Passwords do not match.");
-      return;
+    if (register) {
+      if (form.password.length < 8) {
+        setError("Password must be at least 8 characters.");
+        return;
+      }
+
+      if (form.password !== form.confirm) {
+        setError("Passwords do not match.");
+        return;
+      }
     }
 
     setLoading(true);
 
     try {
-      await setPersistence(
-        auth,
-        remember
-          ? browserLocalPersistence
-          : browserSessionPersistence
-      );
+      await configurePersistence();
 
       if (register) {
         const result = await createUserWithEmailAndPassword(
           auth,
-          form.email.trim(),
+          email,
           form.password
         );
 
-        await updateProfile(result.user, {
-          displayName: form.name.trim(),
-        });
+        try {
+          await updateProfile(result.user, {
+            displayName: form.name.trim(),
+          });
+        } catch (profileError) {
+          console.warn(
+            "SHOES: Profile name update failed:",
+            profileError.code || profileError.message
+          );
+        }
 
-        setNotice("Account created successfully!");
+        console.log(
+          "SHOES: Registration successful",
+          result.user.uid
+        );
       } else {
-        await signInWithEmailAndPassword(
+        const result = await signInWithEmailAndPassword(
           auth,
-          form.email.trim(),
+          email,
           form.password
+        );
+
+        console.log(
+          "SHOES: Email login successful",
+          result.user.uid
         );
       }
 
       navigate(destination, { replace: true });
     } catch (err) {
+      console.error("SHOES Firebase Auth:", err.code, err.message);
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
@@ -189,45 +264,75 @@ export default function AuthPage() {
     setNotice("");
 
     try {
-      await setPersistence(
+      await configurePersistence();
+
+      const result = await signInWithPopup(
         auth,
-        remember
-          ? browserLocalPersistence
-          : browserSessionPersistence
+        googleProvider
       );
 
-      await signInWithPopup(auth, googleProvider);
+      console.log(
+        "SHOES: Google login successful",
+        result.user.uid
+      );
 
       navigate(destination, { replace: true });
     } catch (err) {
-      setError(getErrorMessage(err));
+      console.error(
+        "SHOES Google Auth:",
+        err.code,
+        err.message
+      );
+
+      if (
+        err.code !== "auth/popup-closed-by-user" &&
+        err.code !== "auth/cancelled-popup-request"
+      ) {
+        setError(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
   }
 
   async function resetPassword() {
+    if (loading) return;
+
     setError("");
     setNotice("");
 
-    if (!form.email.trim()) {
-      setError("Enter your email address first.");
+    const email = form.email.trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Enter a valid email address first.");
       return;
     }
 
     setLoading(true);
 
     try {
-      await sendPasswordResetEmail(
-        auth,
-        form.email.trim()
-      );
+      await sendPasswordResetEmail(auth, email);
 
       setNotice(
-        "If this email is registered, a password reset email will be sent."
+        "If this email has a password account, a reset email will be sent. Check your inbox and spam folder."
       );
     } catch (err) {
-      setError(getErrorMessage(err));
+      console.error(
+        "SHOES Password Reset:",
+        err.code,
+        err.message
+      );
+
+      if (
+        err.code === "auth/user-not-found" ||
+        err.code === "auth/invalid-credential"
+      ) {
+        setNotice(
+          "If this email has a password account, a reset email will be sent."
+        );
+      } else {
+        setError(getErrorMessage(err));
+      }
     } finally {
       setLoading(false);
     }
@@ -271,6 +376,7 @@ export default function AuthPage() {
               type="button"
               className={!register ? "active" : ""}
               onClick={() => switchTo("login")}
+              disabled={loading}
             >
               Sign In
             </button>
@@ -279,6 +385,7 @@ export default function AuthPage() {
               type="button"
               className={register ? "active" : ""}
               onClick={() => switchTo("register")}
+              disabled={loading}
             >
               Sign Up
             </button>
@@ -294,11 +401,15 @@ export default function AuthPage() {
                 <input
                   id="auth-name"
                   name="name"
+                  type="text"
                   value={form.name}
                   onChange={change}
                   placeholder="Enter your full name"
                   autoComplete="name"
+                  minLength={2}
+                  maxLength={150}
                   required
+                  disabled={loading}
                 />
               </div>
             )}
@@ -317,6 +428,7 @@ export default function AuthPage() {
                 placeholder="you@example.com"
                 autoComplete="email"
                 required
+                disabled={loading}
               />
             </div>
 
@@ -329,19 +441,22 @@ export default function AuthPage() {
                 <input
                   id="auth-password"
                   name="password"
-                  type={
-                    showPassword ? "text" : "password"
-                  }
+                  type={showPassword ? "text" : "password"}
                   value={form.password}
                   onChange={change}
-                  placeholder="At least 8 characters"
+                  placeholder={
+                    register
+                      ? "At least 8 characters"
+                      : "Enter your password"
+                  }
                   autoComplete={
                     register
                       ? "new-password"
                       : "current-password"
                   }
                   required
-                  minLength={8}
+                  minLength={register ? 8 : undefined}
+                  disabled={loading}
                 />
 
                 <button
@@ -371,14 +486,13 @@ export default function AuthPage() {
                   <input
                     id="auth-confirm"
                     name="confirm"
-                    type={
-                      showConfirm ? "text" : "password"
-                    }
+                    type={showConfirm ? "text" : "password"}
                     value={form.confirm}
                     onChange={change}
                     placeholder="Confirm your password"
                     autoComplete="new-password"
                     required
+                    disabled={loading}
                   />
 
                   <button
@@ -408,6 +522,7 @@ export default function AuthPage() {
                     onChange={(event) =>
                       setRemember(event.target.checked)
                     }
+                    disabled={loading}
                   />
                   Remember me
                 </label>
@@ -458,30 +573,7 @@ export default function AuthPage() {
             onClick={loginWithGoogle}
             disabled={loading}
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 48 48"
-              aria-hidden="true"
-            >
-              <path
-                fill="#EA4335"
-                d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-              />
-              <path
-                fill="#4285F4"
-                d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.25 5.48-4.76 7.18l7.73 6C44.42 38.03 46.98 31.88 46.98 24.55z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M10.53 28.59A14.4 14.4 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.2A23.9 23.9 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19z"
-              />
-              <path
-                fill="#34A853"
-                d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.97 6.19C6.51 42.62 14.62 48 24 48z"
-              />
-            </svg>
-
+            <GoogleIcon />
             {loading
               ? "Connecting..."
               : "Continue with Google"}
@@ -497,6 +589,7 @@ export default function AuthPage() {
               onClick={() =>
                 switchTo(register ? "login" : "register")
               }
+              disabled={loading}
             >
               {register ? "Sign In" : "Sign Up"}
             </button>

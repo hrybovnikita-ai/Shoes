@@ -1,8 +1,11 @@
+
 const { Pool } = require("pg");
 const { products } = require("./data");
 
 if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required (PostgreSQL/Neon)");
+  throw new Error(
+    "DATABASE_URL is required (PostgreSQL/Neon)"
+  );
 }
 
 const pool = new Pool({
@@ -14,6 +17,10 @@ const pool = new Pool({
 });
 
 async function initDb() {
+  // ==========================================
+  // PRODUCTS TABLE
+  // ==========================================
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shoes_products (
       id INTEGER PRIMARY KEY,
@@ -24,40 +31,107 @@ async function initDb() {
       old_price NUMERIC(10,2),
       color TEXT,
       rating NUMERIC(3,1),
-      stock INTEGER NOT NULL CHECK(stock >= 0),
+      stock INTEGER NOT NULL CHECK (stock >= 0),
       image TEXT NOT NULL
     )
   `);
+
+  // ==========================================
+  // ORDERS TABLE
+  // ==========================================
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS shoes_orders (
       id TEXT PRIMARY KEY,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+      firebase_uid TEXT,
+
       customer_name TEXT NOT NULL,
       customer_email TEXT NOT NULL,
+
       items JSONB NOT NULL,
+
       subtotal NUMERIC(10,2) NOT NULL,
       shipping NUMERIC(10,2) NOT NULL,
       total NUMERIC(10,2) NOT NULL,
+
       status TEXT NOT NULL,
       receipt_token_hash TEXT NOT NULL
     )
   `);
 
+  // ==========================================
+  // MIGRATION FOR EXISTING DATABASES
+  // ==========================================
+
+  // Adds Firebase UID to existing orders
+  // without deleting any previous data.
+
+  await pool.query(`
+    ALTER TABLE shoes_orders
+    ADD COLUMN IF NOT EXISTS firebase_uid TEXT
+  `);
+
+  // ==========================================
+  // DATABASE INDEXES
+  // ==========================================
+
+  // Speeds up the My Orders page.
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS
+    idx_shoes_orders_firebase_uid
+    ON shoes_orders(firebase_uid, created_at DESC)
+  `);
+
+  // ==========================================
+  // SEED PRODUCTS
+  // ==========================================
+
   for (const p of products) {
     await pool.query(
       `INSERT INTO shoes_products
-       (id,name,brand,category,price,old_price,color,rating,stock,image)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       (
+         id,
+         name,
+         brand,
+         category,
+         price,
+         old_price,
+         color,
+         rating,
+         stock,
+         image
+       )
+       VALUES (
+         $1, $2, $3, $4, $5,
+         $6, $7, $8, $9, $10
+       )
        ON CONFLICT (id) DO NOTHING`,
       [
-        p.id, p.name, p.brand, p.category,
-        p.price, p.oldPrice, p.color,
-        p.rating, p.stock, p.image,
+        p.id,
+        p.name,
+        p.brand,
+        p.category,
+        p.price,
+        p.oldPrice,
+        p.color,
+        p.rating,
+        p.stock,
+        p.image,
       ]
     );
   }
+
+  console.log(
+    "SHOES: PostgreSQL database initialized"
+  );
 }
+
+// ==========================================
+// PRODUCT RESPONSE FORMAT
+// ==========================================
 
 function productRow(p) {
   return {
@@ -65,31 +139,59 @@ function productRow(p) {
     name: p.name,
     brand: p.brand,
     category: p.category,
+
     price: Number(p.price),
-    oldPrice: Number(p.old_price),
+    oldPrice:
+      p.old_price == null
+        ? null
+        : Number(p.old_price),
+
     color: p.color,
-    rating: Number(p.rating),
+    rating:
+      p.rating == null
+        ? null
+        : Number(p.rating),
+
     stock: p.stock,
     image: p.image,
   };
 }
 
+// ==========================================
+// ORDER RESPONSE FORMAT
+// ==========================================
+
 function orderRow(o) {
   return {
     id: o.id,
+
     date: new Date(o.created_at).toISOString(),
+
     customer: {
       name: o.customer_name,
       email: o.customer_email,
     },
+
     items: o.items,
+
     subtotal: Number(o.subtotal),
     shipping: Number(o.shipping),
     total: Number(o.total),
+
     currency: "USD",
     status: o.status,
+
     paymentProcessed: false,
   };
 }
 
-module.exports = { pool, initDb, productRow, orderRow };
+// ==========================================
+// EXPORTS
+// ==========================================
+
+module.exports = {
+  pool,
+  initDb,
+  productRow,
+  orderRow,
+};

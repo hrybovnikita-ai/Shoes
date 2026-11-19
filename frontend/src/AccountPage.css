@@ -1,0 +1,290 @@
+
+.account-page {
+  min-height: 100vh;
+  background: #0b0b0b;
+  color: #fff;
+  padding: 28px 24px 60px;
+  font-family: inherit;
+}
+
+.account-container {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.account-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 72px;
+}
+
+.account-logo {
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 26px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.account-logo span,
+.account-heading h1 span {
+  color: #b8ff35;
+}
+
+.account-back {
+  border: 1px solid #333;
+  background: #181818;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.account-heading {
+  margin-bottom: 32px;
+}
+
+.account-eyebrow {
+  color: #b8ff35;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.account-heading h1 {
+  margin: 12px 0;
+  font-size: clamp(36px, 5vw, 56px);
+  letter-spacing: -2px;
+}
+
+.account-heading p,
+.account-panel > p,
+.account-profile p {
+  color: #999;
+}
+
+.account-profile {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  background: #161616;
+  border: 1px solid #303030;
+  border-radius: 18px;
+  padding: 28px;
+  margin-bottom: 26px;
+}
+
+.account-avatar {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #b8ff35;
+}
+
+.account-initial {
+  display: grid;
+  place-items: center;
+  background: #b8ff35;
+  color: #111;
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.account-profile h2 {
+  margin: 0 0 6px;
+}
+
+.account-profile p {
+  margin: 0 0 10px;
+  overflow-wrap: anywhere;
+}
+
+.account-status {
+  color: #b8ff35;
+  font-size: 12px;
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.account-panel {
+  background: #161616;
+  border: 1px solid #303030;
+  border-radius: 18px;
+  padding: 28px;
+}
+
+.account-panel h2 {
+  font-size: 21px;
+  margin: 0 0 10px;
+}
+
+.account-panel > p {
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 26px;
+}
+
+.account-panel form {
+  display: flex;
+  flex-direction: column;
+}
+
+.account-panel label {
+  font-size: 12px;
+  font-weight: 700;
+  margin: 12px 0 8px;
+}
+
+.account-panel input {
+  background: #242424;
+  color: white;
+  border: 1px solid #3b3b3b;
+  border-radius: 9px;
+  padding: 14px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.account-panel input:focus {
+  border-color: #b8ff35;
+}
+
+.account-panel input[readonly] {
+  color: #999;
+  cursor: default;
+}
+
+.account-primary {
+  background: #b8ff35;
+  color: #111;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 20px;
+  margin-top: 22px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.account-secondary {
+  background: #242424;
+  color: white;
+  border: 1px solid #444;
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+}
+
+.account-logout {
+  background: #321717;
+  color: #ff8888;
+  border: 1px solid #653030;
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+}
+
+.account-primary:disabled,
+.account-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account-detail {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #303030;
+  font-size: 13px;
+}
+
+.account-detail span {
+  color: #999;
+}
+
+.account-detail strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.account-note {
+  font-size: 12px !important;
+  line-height: 1.6;
+  color: #999;
+  margin-top: 16px;
+}
+
+.account-placeholder {
+  border: 1px dashed #444;
+  border-radius: 12px;
+  padding: 24px;
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+.account-placeholder small {
+  display: block;
+  margin-top: 10px;
+  line-height: 1.6;
+}
+
+.account-error,
+.account-success {
+  padding: 14px 18px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.account-error {
+  background: #321717;
+  color: #ff9999;
+}
+
+.account-success {
+  background: #203017;
+  color: #b8ff35;
+}
+
+.account-footer {
+  margin-top: 50px;
+  color: #777;
+  text-align: center;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .account-page {
+    padding: 20px 16px 40px;
+  }
+
+  .account-header {
+    margin-bottom: 44px;
+  }
+
+  .account-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-panel,
+  .account-profile {
+    padding: 20px;
+  }
+
+  .account-profile {
+    gap: 14px;
+  }
+
+  .account-avatar {
+    width: 58px;
+    height: 58px;
+    flex-shrink: 0;
+  }
+}

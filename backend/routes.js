@@ -1,27 +1,58 @@
-const router = require("express").Router();
-const c = require("./controllers");
 
-// API information
+const router = require("express").Router();
+
+const c = require("./controllers");
+const { requireAuth } = require("./firebaseAdmin");
+
+// ==========================================
+// API INFORMATION
+// ==========================================
+
 router.get("/", c.index);
 router.get("/health", c.health);
 
-// Products
+// ==========================================
+// PRODUCTS
+// ==========================================
+
 router.get("/products", c.getProducts);
 router.get("/products/:id", c.getProduct);
 
-// Demo orders
+// ==========================================
+// MY ACCOUNT - PROTECTED ROUTES
+// ==========================================
+
+router.get(
+  "/me/orders",
+  requireAuth,
+  c.getMyOrders
+);
+
+// ==========================================
+// DEMO ORDERS
+// ==========================================
+
 router.post("/orders", c.createOrder);
 
 // Get order information
 router.get("/orders/:id", c.getOrder);
 
 // Download PDF receipt
-router.get("/orders/:id/receipt", c.downloadReceipt);
+router.get(
+  "/orders/:id/receipt",
+  c.downloadReceipt
+);
 
 // Cancel demo order
-router.patch("/orders/:id/cancel", c.cancelOrder);
+router.patch(
+  "/orders/:id/cancel",
+  c.cancelOrder
+);
 
-// Store statistics
+// ==========================================
+// STORE STATISTICS
+// ==========================================
+
 router.get("/stats", c.getStats);
 
 module.exports = router;
