@@ -2,19 +2,53 @@
 const { Pool } = require("pg");
 const { products } = require("./data");
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL is required (PostgreSQL/Neon)"
-  );
+// The pool is created lazily so a missing DATABASE_URL never crashes the API at
+// import time; queries then fail with a clear DB_NOT_CONFIGURED error (-> 503).
+class DbNotConfiguredError extends Error {
+  constructor() {
+    super("DATABASE_URL is not configured");
+    this.code = "DB_NOT_CONFIGURED";
+    this.status = 503;
+  }
 }
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("localhost")
-    ? false
-    : { rejectUnauthorized: true },
-  max: 5,
-});
+function sslConfig(url) {
+  if (/sslmode=disable/i.test(url)) return false;
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    // keep TLS on for anything we cannot parse
+  }
+  return ["localhost", "127.0.0.1", "::1"].includes(host) ? false : { rejectUnauthorized: true };
+}
+
+let realPool = null;
+function getPool() {
+  if (realPool) return realPool;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new DbNotConfiguredError();
+  realPool = new Pool({ connectionString: url, ssl: sslConfig(url), max: 5 });
+  realPool.on("error", (err) => console.error("SHOES db pool error:", err.message));
+  return realPool;
+}
+
+const pool = {
+  query: (...args) => {
+    try {
+      return getPool().query(...args);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  },
+  connect: () => {
+    try {
+      return getPool().connect();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  },
+};
 
 async function initDb() {
   // ==========================================
@@ -191,6 +225,9 @@ function orderRow(o) {
 
 module.exports = {
   pool,
+  getPool,
+  sslConfig,
+  DbNotConfiguredError,
   initDb,
   productRow,
   orderRow,

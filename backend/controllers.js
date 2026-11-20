@@ -3,9 +3,7 @@ const { pool, productRow, orderRow } = require("./db");
 const { allowedSizes } = require("./data");
 const { generateReceipt } = require("./receipt");
 const { sendOrderConfirmation } = require("./email");
-const { getAuth } = require("firebase-admin/auth");
-
-require("./firebaseAdmin");
+const { verifyIdToken } = require("./firebaseAdmin");
 
 // ==========================================
 // HELPERS
@@ -48,6 +46,21 @@ const home = (req, res) =>
     message: "SHOES Backend API is running",
   });
 
+// Verified identity of the caller (from the Firebase ID token).
+const getMe = (req, res) => {
+  const u = req.firebaseUser;
+  res.json({
+    success: true,
+    user: {
+      uid: u.uid,
+      email: u.email || null,
+      emailVerified: Boolean(u.email_verified),
+      name: u.name || null,
+      provider: u.firebase?.sign_in_provider || null,
+    },
+  });
+};
+
 const index = (req, res) =>
   res.json({
     success: true,
@@ -60,6 +73,7 @@ const index = (req, res) =>
       "GET /api/orders/:id",
       "GET /api/orders/:id/receipt",
       "PATCH /api/orders/:id/cancel",
+      "GET /api/me",
       "GET /api/me/orders",
       "GET /api/stats",
     ],
@@ -70,11 +84,18 @@ const index = (req, res) =>
 // ==========================================
 
 const health = wrap(async (req, res) => {
-  await pool.query("SELECT 1");
+  let database = "ok";
+  try {
+    await pool.query("SELECT 1");
+  } catch (error) {
+    database = error.code === "DB_NOT_CONFIGURED" ? "not_configured" : "unreachable";
+  }
 
-  res.json({
-    success: true,
-    status: "healthy",
+  res.status(database === "ok" ? 200 : 503).json({
+    success: database === "ok",
+    status: database === "ok" ? "healthy" : "degraded",
+    database,
+    auth: require("./firebaseAdmin").isConfigured() ? "configured" : "not_configured",
     uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
@@ -170,11 +191,15 @@ async function optionalFirebaseUser(req, res) {
   }
 
   try {
-    const user = await getAuth().verifyIdToken(match[1]);
+    const user = await verifyIdToken(match[1]);
 
     return { user };
-  } catch {
-    fail(res, 401, "Invalid Firebase ID token");
+  } catch (error) {
+    if (error.code === "AUTH_NOT_CONFIGURED") {
+      fail(res, 503, "Sign-in is temporarily unavailable");
+    } else {
+      fail(res, 401, "Invalid Firebase ID token");
+    }
     return null;
   }
 }
@@ -678,4 +703,5 @@ module.exports = {
   getStats,
   downloadReceipt,
   getMyOrders,
+  getMe,
 };
