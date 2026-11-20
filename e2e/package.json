@@ -1,0 +1,7 @@
+{
+  "name": "shoes-auth-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node auth-e2e.mjs" },
+  "devDependencies": { "playwright": "^1.65.0" }
+}

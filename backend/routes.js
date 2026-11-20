@@ -22,6 +22,8 @@ router.get("/products/:id", c.getProduct);
 // MY ACCOUNT - PROTECTED ROUTES
 // ==========================================
 
+router.get("/me", requireAuth, c.getMe);
+
 router.get(
   "/me/orders",
   requireAuth,
