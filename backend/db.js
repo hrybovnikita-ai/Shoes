@@ -1,137 +1,43 @@
-
+"use strict";
 const { Pool } = require("pg");
 const { products } = require("./data");
 
 if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL is required (PostgreSQL/Neon)"
-  );
+  throw new Error("DATABASE_URL is required (PostgreSQL/Neon)");
+}
+
+// Local databases (localhost / 127.0.0.1 / ?sslmode=disable) connect without
+// TLS; every other host requires verified TLS (Neon).
+function sslConfig(url) {
+  try {
+    const u = new URL(url);
+    const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(u.hostname);
+    if (local || u.searchParams.get("sslmode") === "disable") return false;
+  } catch {
+    // fall through to TLS
+  }
+  return { rejectUnauthorized: true };
 }
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL.includes("localhost")
-    ? false
-    : { rejectUnauthorized: true },
-  max: 5,
+  ssl: sslConfig(process.env.DATABASE_URL),
+  max: Number(process.env.PG_POOL_MAX) || 5,
 });
 
-async function initDb() {
-  // ==========================================
-  // PRODUCTS TABLE
-  // ==========================================
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS shoes_products (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      brand TEXT NOT NULL,
-      category TEXT NOT NULL,
-      price NUMERIC(10,2) NOT NULL,
-      old_price NUMERIC(10,2),
-      color TEXT,
-      rating NUMERIC(3,1),
-      stock INTEGER NOT NULL CHECK (stock >= 0),
-      image TEXT NOT NULL
-    )
-  `);
-
-  // ==========================================
-  // ORDERS TABLE
-  // ==========================================
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS shoes_orders (
-      id TEXT PRIMARY KEY,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-      firebase_uid TEXT,
-
-      customer_name TEXT NOT NULL,
-      customer_email TEXT NOT NULL,
-
-      items JSONB NOT NULL,
-
-      subtotal NUMERIC(10,2) NOT NULL,
-      shipping NUMERIC(10,2) NOT NULL,
-      total NUMERIC(10,2) NOT NULL,
-
-      status TEXT NOT NULL,
-      receipt_token_hash TEXT NOT NULL
-    )
-  `);
-
-  // ==========================================
-  // MIGRATION FOR EXISTING DATABASES
-  // ==========================================
-
-  // Adds Firebase UID to existing orders
-  // without deleting any previous data.
-
-  await pool.query(`
-    ALTER TABLE shoes_orders
-    ADD COLUMN IF NOT EXISTS firebase_uid TEXT
-  `);
-
-  // ==========================================
-  // DATABASE INDEXES
-  // ==========================================
-
-  // Speeds up the My Orders page.
-
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS
-    idx_shoes_orders_firebase_uid
-    ON shoes_orders(firebase_uid, created_at DESC)
-  `);
-
-  // ==========================================
-  // SEED PRODUCTS
-  // ==========================================
-
+// Seeds the original demo catalog. ON CONFLICT DO NOTHING: never overwrites
+// existing product rows (prices / stock edited in the DB are preserved).
+async function seedProducts(client = pool) {
   for (const p of products) {
-    await pool.query(
+    await client.query(
       `INSERT INTO shoes_products
-       (
-         id,
-         name,
-         brand,
-         category,
-         price,
-         old_price,
-         color,
-         rating,
-         stock,
-         image
-       )
-       VALUES (
-         $1, $2, $3, $4, $5,
-         $6, $7, $8, $9, $10
-       )
+         (id, name, brand, category, price, old_price, color, rating, stock, image)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (id) DO NOTHING`,
-      [
-        p.id,
-        p.name,
-        p.brand,
-        p.category,
-        p.price,
-        p.oldPrice,
-        p.color,
-        p.rating,
-        p.stock,
-        p.image,
-      ]
+      [p.id, p.name, p.brand, p.category, p.price, p.oldPrice, p.color, p.rating, p.stock, p.image]
     );
   }
-
-  console.log(
-    "SHOES: PostgreSQL database initialized"
-  );
 }
-
-// ==========================================
-// PRODUCT RESPONSE FORMAT
-// ==========================================
 
 function productRow(p) {
   return {
@@ -139,59 +45,62 @@ function productRow(p) {
     name: p.name,
     brand: p.brand,
     category: p.category,
-
     price: Number(p.price),
-    oldPrice:
-      p.old_price == null
-        ? null
-        : Number(p.old_price),
-
+    oldPrice: p.old_price == null ? null : Number(p.old_price),
     color: p.color,
-    rating:
-      p.rating == null
-        ? null
-        : Number(p.rating),
-
+    rating: p.rating == null ? null : Number(p.rating),
     stock: p.stock,
     image: p.image,
+    ...(p.review_count != null ? { reviewCount: Number(p.review_count) } : {}),
+    ...(p.review_avg != null ? { reviewAverage: Number(p.review_avg) } : {}),
+    ...(p.units_sold != null ? { unitsSold: Number(p.units_sold) } : {}),
   };
 }
 
-// ==========================================
-// ORDER RESPONSE FORMAT
-// ==========================================
+function parseItems(items) {
+  if (Array.isArray(items)) return items;
+  if (typeof items === "string") {
+    try {
+      const parsed = JSON.parse(items);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+const CANCELLABLE_STATUSES = new Set(["DEMO_CONFIRMED", "PENDING_PAYMENT"]);
 
 function orderRow(o) {
+  const paymentProvider = o.payment_provider || "demo";
+  const paymentStatus = o.payment_status || "demo";
   return {
     id: o.id,
-
+    orderNumber: o.id,
     date: new Date(o.created_at).toISOString(),
-
     customer: {
       name: o.customer_name,
       email: o.customer_email,
+      ...(o.customer_phone ? { phone: o.customer_phone } : {}),
     },
-
-    items: o.items,
-
+    shippingAddress: o.shipping_address || null,
+    deliveryMethod: o.delivery_method || "standard",
+    items: parseItems(o.items),
     subtotal: Number(o.subtotal),
+    discount: Number(o.discount || 0),
+    promoCode: o.promo_code || null,
     shipping: Number(o.shipping),
     total: Number(o.total),
-
     currency: "USD",
     status: o.status,
-
-    paymentProcessed: false,
+    paymentProvider,
+    paymentStatus,
+    paymentProcessed: paymentStatus === "paid",
+    paidAt: o.paid_at ? new Date(o.paid_at).toISOString() : null,
+    cancelledAt: o.cancelled_at ? new Date(o.cancelled_at).toISOString() : null,
+    canCancel: CANCELLABLE_STATUSES.has(o.status) && paymentStatus !== "paid",
   };
 }
 
-// ==========================================
-// EXPORTS
-// ==========================================
-
-module.exports = {
-  pool,
-  initDb,
-  productRow,
-  orderRow,
-};
+module.exports = { pool, seedProducts, productRow, orderRow, parseItems, sslConfig, CANCELLABLE_STATUSES };
