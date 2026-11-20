@@ -1,125 +1,45 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { calculateTotals, FREE_SHIPPING_THRESHOLD_CENTS, isValidPromoCode, normalizePromoCode, toCents } from "../lib/pricing";
+import { cents } from "../lib/format";
+import { getSavedPromo, savePromo } from "../lib/promo";
 import "./ShoppingCart.css";
 
-const PROMO_CODES = {
-  SHOES10: 0.1,
-  WELCOME15: 0.15,
-};
-
-const money = (value) =>
-  `$${(Number(value) || 0).toFixed(2)}`;
-
-const sameVariant = (a, b) =>
-  String(a.id) === String(b.id) &&
-  String(a.size ?? "") === String(b.size ?? "") &&
-  String(a.color ?? "") === String(b.color ?? "");
-
-export default function ShoppingCart({
-  isOpen,
-  onClose,
-  cart = [],
-  setCart,
-  onCheckout,
-}) {
-  const [promoInput, setPromoInput] = useState("");
-  const [promoCode, setPromoCode] = useState("");
+export default function ShoppingCart({ isOpen, onClose, cart = [], onUpdate, onRemove, onCheckout }) {
+  const [promoInput, setPromoInput] = useState(getSavedPromo);
+  const [promoCode, setPromoCode] = useState(getSavedPromo);
   const [message, setMessage] = useState("");
+  const panelRef = useRef(null);
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    const handleEscape = (event) => {
-      if (event.key === "Escape") onClose?.();
-    };
-
+    if (!isOpen) return undefined;
+    panelRef.current?.focus();
+    const handleEscape = (event) => event.key === "Escape" && onClose?.();
     window.addEventListener("keydown", handleEscape);
-
-    return () =>
-      window.removeEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
-  const updateQuantity = (target, change) => {
-    setCart((previous) =>
-      previous
-        .map((item) => {
-          if (!sameVariant(item, target)) return item;
-
-          return {
-            ...item,
-            quantity: Math.max(
-              0,
-              (Number(item.quantity) || 1) + change
-            ),
-          };
-        })
-        .filter((item) => item.quantity > 0)
-    );
-  };
-
-  const removeItem = (target) => {
-    setCart((previous) =>
-      previous.filter((item) => !sameVariant(item, target))
-    );
-  };
-
   const applyPromo = () => {
-    const code = promoInput.trim().toUpperCase();
-
-    if (Object.hasOwn(PROMO_CODES, code)) {
+    const code = normalizePromoCode(promoInput);
+    if (code && isValidPromoCode(code)) {
       setPromoCode(code);
-      setMessage(`${code} applied successfully!`);
+      savePromo(code);
+      setMessage(`${code} applied.`);
     } else {
       setPromoCode("");
-      setMessage("Invalid promo code.");
+      savePromo("");
+      setMessage(code ? "Invalid promo code." : "Enter a promo code.");
     }
   };
 
-  const subtotal = cart.reduce(
-    (sum, item) =>
-      sum +
-      (Number(item.price) || 0) *
-        (Number(item.quantity) || 1),
-    0
+  const totals = calculateTotals(
+    cart.map((i) => ({ unitPriceCents: toCents(i.price), quantity: Number(i.quantity) || 1 })),
+    promoCode
   );
-
-  const discountRate = PROMO_CODES[promoCode] || 0;
-  const discount = subtotal * discountRate;
-  const shipping =
-    subtotal === 0 || subtotal >= 150 ? 0 : 10;
-  const total = Math.max(
-    0,
-    subtotal - discount + shipping
-  );
-
-  const itemCount = cart.reduce(
-    (sum, item) => sum + (Number(item.quantity) || 1),
-    0
-  );
-
-  const handleCheckout = () => {
-    if (!cart.length) return;
-
-    onCheckout?.({
-      items: cart.map((item) => ({ ...item })),
-      subtotal,
-      discount,
-      shipping,
-      total,
-      promoCode,
-    });
-  };
+  const progress = Math.min(100, Math.round((totals.subtotalCents / FREE_SHIPPING_THRESHOLD_CENTS) * 100));
 
   return (
     <>
-      {isOpen && (
-        <div
-          className="cart-overlay"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
-
+      {isOpen && <div className="cart-overlay" onClick={onClose} aria-hidden="true" />}
       <aside
         className={`shopping-cart ${isOpen ? "open" : ""}`}
         role="dialog"
@@ -127,28 +47,42 @@ export default function ShoppingCart({
         aria-label="Shopping cart"
         aria-hidden={!isOpen}
         inert={!isOpen}
+        tabIndex={-1}
+        ref={panelRef}
       >
         <div className="cart-header">
           <div>
-            <span className="cart-label">
-              YOUR SELECTION
-            </span>
-            <h2>Shopping Cart ({itemCount})</h2>
+            <span className="cart-label">YOUR SELECTION</span>
+            <h2>Shopping Cart ({totals.itemCount})</h2>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close cart"
-          >
+          <button type="button" onClick={onClose} aria-label="Close cart">
             ✕
           </button>
         </div>
 
+        {cart.length > 0 && (
+          <div className="shipping-progress" aria-live="polite">
+            {totals.freeShippingRemainingCents > 0 ? (
+              <span>
+                Add <strong>{cents(totals.freeShippingRemainingCents)}</strong> more for free shipping
+              </span>
+            ) : (
+              <span>
+                <strong>You unlocked free shipping!</strong>
+              </span>
+            )}
+            <div className="progress-track" aria-hidden="true">
+              <div className="progress-bar" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        )}
+
         <div className="cart-items">
           {cart.length === 0 ? (
             <div className="cart-empty">
-              <div className="empty-icon">🛒</div>
+              <div className="empty-icon" aria-hidden="true">
+                🛒
+              </div>
               <h3>Your cart is empty</h3>
               <p>Find your next favorite sneakers.</p>
               <button type="button" onClick={onClose}>
@@ -156,103 +90,66 @@ export default function ShoppingCart({
               </button>
             </div>
           ) : (
-            cart.map((item) => (
-              <div
-                className="cart-product"
-                key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}`}
-              >
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  loading="lazy"
-                />
-
-                <div className="cart-product-info">
-                  <h3>{item.name}</h3>
-
-                  <p>
-                    {item.brand}
-                    {item.size != null
-                      ? ` · EU ${item.size}`
-                      : ""}
-                    {item.color
-                      ? ` · ${item.color}`
-                      : ""}
-                  </p>
-
-                  <strong>
-                    {money(
-                      Number(item.price) *
-                      (Number(item.quantity) || 1)
-                    )}
-                  </strong>
-
-                  <div className="cart-product-actions">
-                    <div className="quantity-control">
-                      <button
-                        type="button"
-                        aria-label="Decrease quantity"
-                        onClick={() =>
-                          updateQuantity(item, -1)
-                        }
-                      >
-                        −
-                      </button>
-
-                      <span>{item.quantity || 1}</span>
-
-                      <button
-                        type="button"
-                        aria-label="Increase quantity"
-                        onClick={() =>
-                          updateQuantity(item, 1)
-                        }
-                      >
-                        +
+            cart.map((item) => {
+              const qty = Number(item.quantity) || 1;
+              return (
+                <div className="cart-product" key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}`} data-testid="cart-line">
+                  <img src={item.image} alt={item.name} loading="lazy" width="90" height="90" />
+                  <div className="cart-product-info">
+                    <h3>{item.name}</h3>
+                    <p>
+                      {item.brand}
+                      {item.size != null ? ` · EU ${item.size}` : ""}
+                      {item.color ? ` · ${item.color}` : ""}
+                    </p>
+                    <strong>{cents(toCents(item.price) * qty)}</strong>
+                    <div className="cart-product-actions">
+                      <div className="quantity-control">
+                        <button type="button" aria-label={`Decrease quantity of ${item.name}`} onClick={() => onUpdate(item, qty - 1)}>
+                          −
+                        </button>
+                        <span aria-label="Quantity">{qty}</span>
+                        <button
+                          type="button"
+                          aria-label={`Increase quantity of ${item.name}`}
+                          disabled={qty >= 10}
+                          onClick={() => onUpdate(item, qty + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button type="button" className="remove-product" onClick={() => onRemove(item)}>
+                        Remove
                       </button>
                     </div>
-
-                    <button
-                      type="button"
-                      className="remove-product"
-                      onClick={() => removeItem(item)}
-                    >
-                      Remove
-                    </button>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
         <div className="cart-bottom">
           <div className="promo-section">
-            <label htmlFor="promo-code">
-              PROMO CODE
-            </label>
-
+            <label htmlFor="promo-code">PROMO CODE</label>
             <div className="promo-input">
               <input
                 id="promo-code"
                 value={promoInput}
-                onChange={(event) => {
-                  setPromoInput(event.target.value);
+                onChange={(e) => {
+                  setPromoInput(e.target.value);
                   setMessage("");
                 }}
-                placeholder="Enter promo code"
+                onKeyDown={(e) => e.key === "Enter" && applyPromo()}
+                placeholder="SHOES10 or WELCOME15"
+                autoComplete="off"
               />
-
-              <button
-                type="button"
-                onClick={applyPromo}
-              >
+              <button type="button" onClick={applyPromo}>
                 Apply
               </button>
             </div>
-
             {message && (
-              <p className="promo-message" role="status">
+              <p className={`promo-message ${promoCode ? "" : "error"}`} role="status">
                 {message}
               </p>
             )}
@@ -261,41 +158,26 @@ export default function ShoppingCart({
           <div className="cart-summary">
             <div>
               <span>Subtotal</span>
-              <span>{money(subtotal)}</span>
+              <span>{cents(totals.subtotalCents)}</span>
             </div>
-
             <div>
-              <span>Discount</span>
-              <span>-{money(discount)}</span>
+              <span>Discount{totals.promoCode ? ` (${totals.promoCode})` : ""}</span>
+              <span>-{cents(totals.discountCents)}</span>
             </div>
-
             <div>
               <span>Shipping</span>
-              <span>
-                {shipping === 0
-                  ? "FREE"
-                  : money(shipping)}
-              </span>
+              <span>{totals.shippingCents === 0 ? "FREE" : cents(totals.shippingCents)}</span>
             </div>
-
             <div className="cart-total">
               <strong>Total</strong>
-              <strong>{money(total)}</strong>
+              <strong data-testid="cart-total">{cents(totals.totalCents)}</strong>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="checkout-button"
-            disabled={cart.length === 0}
-            onClick={handleCheckout}
-          >
+          <button type="button" className="checkout-button" disabled={cart.length === 0} onClick={onCheckout}>
             Proceed to Checkout →
           </button>
-
-          <p className="secure-checkout">
-            Demo checkout · No real payments · USD
-          </p>
+          <p className="secure-checkout">Prices are re-checked by the server at checkout · USD</p>
         </div>
       </aside>
     </>

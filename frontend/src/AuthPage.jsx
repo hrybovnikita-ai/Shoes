@@ -1,18 +1,24 @@
 
-import { useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
 
-import { auth, googleProvider } from "./firebase";
+import { auth, googleProvider, firebaseEnabled } from "./firebase";
+import { useAuth } from "./auth/AuthContext";
+import { clerkEnabled } from "./auth/config";
+import useDocumentMeta from "./hooks/useDocumentMeta";
+
+const ClerkAuthPanel = clerkEnabled ? lazy(() => import("./auth/ClerkAuthPanel.jsx")) : null;
 import "./AuthPage.css";
 
 function Eye({ crossed }) {
@@ -109,11 +115,11 @@ function getErrorMessage(error) {
   );
 }
 
-export default function AuthPage() {
+function FirebaseAuthForm() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const register = location.pathname === "/register";
+  const register = location.pathname.startsWith("/register");
 
   const [form, setForm] = useState({
     name: "",
@@ -136,7 +142,7 @@ export default function AuthPage() {
     !from.pathname.startsWith("//") &&
     !["/login", "/register"].includes(from.pathname)
       ? `${from.pathname}${from.search || ""}${from.hash || ""}`
-      : "/shop";
+      : "/account";
 
   function change(event) {
     const { name, value } = event.target;
@@ -230,20 +236,16 @@ export default function AuthPage() {
           );
         }
 
-        console.log(
-          "SHOES: Registration successful",
-          result.user.uid
-        );
+        try {
+          await sendEmailVerification(result.user);
+        } catch (verifyError) {
+          console.warn("SHOES: Verification email failed:", verifyError.code || verifyError.message);
+        }
       } else {
-        const result = await signInWithEmailAndPassword(
+        await signInWithEmailAndPassword(
           auth,
           email,
           form.password
-        );
-
-        console.log(
-          "SHOES: Email login successful",
-          result.user.uid
         );
       }
 
@@ -266,14 +268,9 @@ export default function AuthPage() {
     try {
       await configurePersistence();
 
-      const result = await signInWithPopup(
+      await signInWithPopup(
         auth,
         googleProvider
-      );
-
-      console.log(
-        "SHOES: Google login successful",
-        result.user.uid
       );
 
       navigate(destination, { replace: true });
@@ -600,6 +597,85 @@ export default function AuthPage() {
           © {new Date().getFullYear()} SHOES.
           All rights reserved.
         </p>
+      </div>
+    </main>
+  );
+}
+
+function destinationFrom(location) {
+  const from = location.state?.from;
+  return typeof from?.pathname === "string" &&
+    from.pathname.startsWith("/") &&
+    !from.pathname.startsWith("//") &&
+    !/^\/(login|register)/.test(from.pathname)
+    ? `${from.pathname}${from.search || ""}${from.hash || ""}`
+    : "/account";
+}
+
+// Chooses the sign-in experience:
+//  - Clerk (if VITE_CLERK_PUBLISHABLE_KEY is set) as the primary option, with
+//    the existing Firebase sign-in still available for existing accounts;
+//  - otherwise the existing Firebase sign-in only (default).
+export default function AuthPage({ mode = "login" }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, ready } = useAuth();
+  const legacy = new URLSearchParams(location.search).get("method") === "firebase";
+  const destination = destinationFrom(location);
+  useDocumentMeta({ title: mode === "register" ? "Create account" : "Sign in", noindex: true });
+
+  useEffect(() => {
+    if (ready && user) navigate(destination, { replace: true });
+  }, [ready, user, destination, navigate]);
+
+  if (!firebaseEnabled && !clerkEnabled) {
+    return (
+      <main className="auth-page">
+        <div className="auth-container">
+          <section className="auth-card">
+            <h1>Sign-in is not configured.</h1>
+            <p>Set the Firebase (VITE_FIREBASE_*) or Clerk (VITE_CLERK_PUBLISHABLE_KEY) variables for the frontend. Guest checkout still works.</p>
+            <button type="button" className="auth-submit" onClick={() => navigate("/shop")}>Back to Shop →</button>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (!clerkEnabled || (legacy && firebaseEnabled)) {
+    return (
+      <>
+        {clerkEnabled && (
+          <div className="auth-switch-banner">
+            Using your existing SHOES account (Firebase).{" "}
+            <button type="button" onClick={() => navigate(location.pathname.startsWith("/register") ? "/register" : "/login", { state: location.state })}>
+              Use the new sign-in instead
+            </button>
+          </div>
+        )}
+        <FirebaseAuthForm />
+      </>
+    );
+  }
+
+  return (
+    <main className="auth-page clerk-auth">
+      <div className="auth-container">
+        <button className="auth-brand" type="button" onClick={() => navigate("/")}>
+          SHOES<span>.</span>
+        </button>
+        <Suspense fallback={<p role="status">Loading sign-in…</p>}>
+          <ClerkAuthPanel mode={mode} redirectTo={destination} />
+        </Suspense>
+        {firebaseEnabled && (
+          <p className="auth-legacy-link">
+            Have an account from before?{" "}
+            <button type="button" onClick={() => navigate(`/login?method=firebase`, { state: location.state })}>
+              Sign in with your existing SHOES account
+            </button>
+            <small>After signing in you can link it to your new sign-in in My Account → Security, so your past orders follow you.</small>
+          </p>
+        )}
       </div>
     </main>
   );
