@@ -1,0 +1,1097 @@
+/* ==========================================================================
+   SHOES — Dark Glass design system (v1)
+   Loaded last (App.jsx). Selectors are prefixed with :root so they win over
+   page stylesheets that load later with lazy routes, without !important.
+   Dark-only surfaces are scoped to :root:not([data-theme="light"]) (= DK);
+   theme-neutral rules (radius, motion, focus) use plain :root.
+   Palette is unchanged: black / #121212 / #181818 / white / gray / lime.
+   ========================================================================== */
+
+:root {
+  /* Palette (unchanged brand colors) */
+  --sh-black: #000000;
+  --sh-surface-1: #121212;
+  --sh-surface-2: #181818;
+  --sh-text: #ffffff;
+  --sh-text-2: #b3b3b3;      /* light gray, AA on #000–#181818 */
+  --sh-text-3: #8c8c8c;
+  --sh-lime: #b7ff38;        /* existing accent */
+  --sh-lime-hover: #c9ff6b;
+  --sh-on-lime: #0b0b0b;
+
+  /* Glass */
+  --glass-bg: rgba(24, 24, 24, 0.65);
+  --glass-bg-strong: rgba(18, 18, 18, 0.82);
+  --glass-bg-soft: rgba(24, 24, 24, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-border-strong: rgba(255, 255, 255, 0.16);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --glass-blur: 20px;
+  --glass-blur-sm: 12px;
+  --glass-blur-lg: 24px;
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --glass-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.45);
+  --lime-glow: 0 0 0 1px rgba(183, 255, 56, 0.35), 0 8px 24px rgba(183, 255, 56, 0.18);
+  --lime-ring: 0 0 0 3px rgba(183, 255, 56, 0.35);
+
+  /* Radius tokens */
+  --r-btn-sm: 10px;
+  --r-btn: 12px;
+  --r-btn-lg: 15px;
+  --r-input: 10px;
+  --r-card: 15px;
+  --r-nav: 12px;
+  --r-dropdown: 12px;
+  --r-modal: 15px;
+
+  /* 8px spacing scale */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+  --s-8: 64px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 200ms;
+  --t: 240ms;
+  --t-slow: 300ms;
+}
+
+:root[data-theme="light"] {
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-bg-soft: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-strong: rgba(0, 0, 0, 0.14);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --glass-shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- Utility classes ---------- */
+.glass-panel {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+.glass-strong {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  backdrop-filter: blur(var(--glass-blur-lg));
+  border: 1px solid var(--glass-border-strong);
+  border-radius: var(--r-modal);
+  box-shadow: var(--glass-shadow-lg), var(--glass-highlight);
+}
+.glass-soft {
+  background: var(--glass-bg-soft);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-card);
+}
+
+/* ---------- Page canvas: black with faint lime/gray depth for the glass ---------- */
+:root:not([data-theme="light"]) body {
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(183, 255, 56, 0.06), transparent 60%),
+    radial-gradient(900px 600px at -10% 30%, rgba(255, 255, 255, 0.035), transparent 60%),
+    var(--sh-black);
+  background-attachment: fixed;
+}
+:root:not([data-theme="light"]) {
+  --background: #000000;
+  --surface: #121212;
+  --border: rgba(255, 255, 255, 0.10);
+  --muted: var(--sh-text-2);
+}
+:root .muted { color: var(--sh-text-2); }
+:root[data-theme="light"] .muted { color: #5c5c5c; }
+
+/* ---------- Focus (keyboard) ---------- */
+:root :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--sh-lime);
+  outline-offset: 2px;
+  box-shadow: var(--lime-ring);
+}
+:root[data-theme="light"] :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: #5c8a00; /* lime on white fails contrast; darker lime ring */
+}
+
+/* ==========================================================================
+   Buttons (behavior unchanged — visuals only)
+   ========================================================================== */
+:root :where(.primary, .add-btn, .account-btn, .icon-btn, .menu-btn, .theme-toggle, .filter, .ghost, .ghost-link,
+  .auth-submit, .auth-google, .checkout-submit, .checkout-button, .account-primary, .account-secondary,
+  .shoe-cart-btn, .shoe-buy-btn, .shoe-fav-btn, .close-btn, .modal-close, .quick-view, .text-link,
+  .promo-input button, .newsletter button, .account-trigger, .cart-empty button, .empty-state button) {
+  transition:
+    background-color var(--t) var(--ease),
+    border-color var(--t) var(--ease),
+    color var(--t) var(--ease),
+    box-shadow var(--t) var(--ease),
+    filter var(--t) var(--ease),
+    transform var(--t-fast) var(--ease),
+    opacity var(--t) var(--ease);
+}
+:root :where(.primary, .add-btn, .auth-submit, .auth-google, .checkout-submit, .checkout-button,
+  .account-primary, .account-secondary, .shoe-cart-btn, .shoe-buy-btn, .account-btn, .icon-btn,
+  .menu-btn, .theme-toggle, .filter, .ghost, .promo-input button, .newsletter button):active:not(:disabled) {
+  transform: translateY(1px) scale(0.985);
+  filter: brightness(0.96);
+}
+:root :where(button, .primary, .add-btn, .auth-submit, .checkout-submit, .checkout-button, .account-primary):disabled,
+:root :where(button)[aria-busy="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+/* Primary lime actions */
+:root .primary,
+:root .auth-submit,
+:root .checkout-submit,
+:root .checkout-button,
+:root .account-primary,
+:root .shoe-buy-btn,
+:root .account-btn {
+  background: var(--sh-lime);
+  color: var(--sh-on-lime);
+  border: 1px solid var(--sh-lime);
+  font-weight: 850;
+}
+:root .primary,
+:root .checkout-submit,
+:root .checkout-button,
+:root .auth-submit,
+:root .shoe-buy-btn {
+  border-radius: var(--r-btn-lg);
+  min-height: 48px;
+}
+:root .account-primary,
+:root .account-btn {
+  border-radius: var(--r-btn);
+}
+:root .primary:hover:not(:disabled),
+:root .auth-submit:hover:not(:disabled),
+:root .checkout-submit:hover:not(:disabled),
+:root .checkout-button:hover:not(:disabled),
+:root .account-primary:hover:not(:disabled),
+:root .shoe-buy-btn:hover:not(:disabled),
+:root .account-btn:hover {
+  background: var(--sh-lime-hover);
+  border-color: var(--sh-lime-hover);
+  box-shadow: var(--lime-glow);
+  transform: translateY(-1px);
+}
+
+/* Secondary / glass buttons */
+:root:not([data-theme="light"]) .icon-btn,
+:root:not([data-theme="light"]) .menu-btn,
+:root:not([data-theme="light"]) .theme-toggle,
+:root:not([data-theme="light"]) .account-trigger,
+:root:not([data-theme="light"]) .ghost,
+:root:not([data-theme="light"]) .account-secondary,
+:root:not([data-theme="light"]) .shoe-cart-btn,
+:root:not([data-theme="light"]) .auth-google,
+:root:not([data-theme="light"]) .close-btn,
+:root:not([data-theme="light"]) .modal-close {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  color: var(--sh-text);
+}
+:root:not([data-theme="light"]) .icon-btn:hover,
+:root:not([data-theme="light"]) .menu-btn:hover,
+:root:not([data-theme="light"]) .theme-toggle:hover,
+:root:not([data-theme="light"]) .account-trigger:hover,
+:root:not([data-theme="light"]) .ghost:hover,
+:root:not([data-theme="light"]) .account-secondary:hover:not(:disabled),
+:root:not([data-theme="light"]) .shoe-cart-btn:hover:not(:disabled),
+:root:not([data-theme="light"]) .auth-google:hover:not(:disabled),
+:root:not([data-theme="light"]) .close-btn:hover,
+:root:not([data-theme="light"]) .modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(183, 255, 56, 0.45);
+}
+:root .icon-btn,
+:root .menu-btn,
+:root .theme-toggle,
+:root .account-trigger,
+:root .close-btn,
+:root .modal-close {
+  border-radius: var(--r-nav);
+  min-height: 44px;
+  min-width: 44px;
+}
+:root .ghost,
+:root .ghost-link,
+:root .account-secondary,
+:root .auth-google,
+:root .shoe-cart-btn {
+  border-radius: var(--r-btn);
+}
+:root .add-btn,
+:root .filter,
+:root .promo-input button,
+:root .newsletter button,
+:root .quick-view {
+  border-radius: var(--r-btn-sm);
+}
+
+/* ==========================================================================
+   Header / navigation
+   ========================================================================== */
+:root:not([data-theme="light"]) .announcement {
+  background: var(--sh-lime);
+  color: var(--sh-on-lime);
+}
+:root .header {
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .header {
+  background: rgba(0, 0, 0, 0.62);
+  -webkit-backdrop-filter: saturate(140%) blur(var(--glass-blur));
+  backdrop-filter: saturate(140%) blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03), 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+:root .nav-links a {
+  position: relative;
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--r-nav);
+  transition: color var(--t) var(--ease), background-color var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .nav-links a { color: var(--sh-text-2); }
+:root:not([data-theme="light"]) .nav-links a:hover {
+  color: var(--sh-text);
+  background: rgba(255, 255, 255, 0.05);
+}
+:root .nav-links a::after {
+  content: "";
+  position: absolute;
+  left: var(--s-3);
+  right: var(--s-3);
+  bottom: 2px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--sh-lime);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--t) var(--ease);
+}
+:root .nav-links a[aria-current="page"] { color: var(--sh-lime); }
+:root[data-theme="light"] .nav-links a[aria-current="page"] { color: #111; }
+:root .nav-links a[aria-current="page"]::after,
+:root .nav-links a:hover::after { transform: scaleX(1); }
+
+/* Search trigger looks like a field */
+:root:not([data-theme="light"]) .search-trigger {
+  color: var(--sh-text-2);
+}
+:root:not([data-theme="light"]) .search-trigger:hover { color: var(--sh-text); }
+
+/* Account dropdown + search suggestions: glass menus */
+:root:not([data-theme="light"]) .account-dropdown,
+:root:not([data-theme="light"]) .search-suggestions {
+  background: rgba(18, 18, 18, 0.78);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-lg), var(--glass-highlight);
+}
+:root .account-dropdown,
+:root .search-suggestions {
+  border-radius: var(--r-dropdown);
+  animation: sh-pop var(--t) var(--ease) backwards;
+  transform-origin: top right;
+}
+:root .search-suggestions { transform-origin: top left; }
+:root .account-dropdown button,
+:root .search-suggestions li {
+  border-radius: 10px;
+  min-height: 40px;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+:root:not([data-theme="light"]) .account-dropdown button:hover,
+:root:not([data-theme="light"]) .account-dropdown button:focus-visible,
+:root:not([data-theme="light"]) .search-suggestions li.active,
+:root:not([data-theme="light"]) .search-suggestions li:hover {
+  background: rgba(183, 255, 56, 0.10);
+  color: var(--sh-text);
+}
+
+/* Mobile nav sheet */
+@media (max-width: 1024px) {
+  :root:not([data-theme="light"]) .nav-links.open {
+    background: rgba(10, 10, 10, 0.985);
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+    backdrop-filter: blur(var(--glass-blur-lg));
+    border: 1px solid var(--glass-border-strong);
+    box-shadow: var(--glass-shadow-lg);
+  }
+  :root .nav-links.open {
+    border-radius: var(--r-modal);
+    animation: sh-pop var(--t) var(--ease) backwards;
+    transform-origin: top center;
+  }
+  :root .nav-links.open a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    border-radius: 0;
+  }
+  :root .nav-links.open a::after { display: none; }
+  :root .nav-links.open a[aria-current="page"] { box-shadow: inset 3px 0 0 var(--sh-lime); padding-left: var(--s-4); }
+}
+
+/* ==========================================================================
+   Homepage
+   ========================================================================== */
+:root .hero {
+  border-radius: var(--r-modal);
+  position: relative;
+  isolation: isolate;
+}
+:root:not([data-theme="light"]) .hero {
+  background:
+    radial-gradient(circle at 78% 45%, rgba(183, 255, 56, 0.14), transparent 55%),
+    linear-gradient(135deg, #121212 0%, #0a0a0a 60%, #000 100%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-lg), var(--glass-highlight);
+}
+:root .hero h1 { letter-spacing: -0.04em; }
+:root:not([data-theme="light"]) .hero p { color: var(--sh-text-2); }
+:root .hero-content > * {
+  animation: sh-rise 600ms var(--ease) backwards;
+}
+:root .hero-content > *:nth-child(2) { animation-delay: 60ms; }
+:root .hero-content > *:nth-child(3) { animation-delay: 120ms; }
+:root .hero-content > *:nth-child(4) { animation-delay: 180ms; }
+:root .hero-content > *:nth-child(5) { animation-delay: 240ms; }
+:root .hero-image { animation: sh-fade 700ms var(--ease) backwards; }
+:root .hero-stats strong { color: var(--sh-text); }
+:root[data-theme="light"] .hero-stats strong { color: #111; }
+
+/* Benefits strip -> glass promo cards */
+:root .benefits {
+  gap: var(--s-3);
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  border-radius: 0;
+}
+:root .benefits > div {
+  border-radius: var(--r-card);
+  padding: var(--s-5);
+  transition: transform var(--t) var(--ease), border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .benefits > div,
+:root:not([data-theme="light"]) .benefits > div:last-child {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  backdrop-filter: blur(var(--glass-blur-sm));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+:root[data-theme="light"] .benefits > div,
+:root[data-theme="light"] .benefits > div:last-child {
+  border: 1px solid var(--glass-border-strong);
+  background: #fff;
+}
+:root .benefits > div:hover {
+  transform: translateY(-2px);
+  border-color: rgba(183, 255, 56, 0.35);
+}
+:root:not([data-theme="light"]) .benefits small { color: var(--sh-text-2); }
+
+/* Section rhythm */
+:root .section { margin-top: var(--s-8); }
+:root .section-heading { margin-bottom: var(--s-5); }
+:root .section-heading h2 { letter-spacing: -0.03em; }
+
+/* Category tiles */
+:root .category-card {
+  border-radius: var(--r-card);
+  transition: transform var(--t) var(--ease), box-shadow var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .category-card { border: 1px solid var(--glass-border); }
+:root .category-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--glass-shadow-lg);
+  border-color: rgba(183, 255, 56, 0.35);
+}
+:root .category-arrow { border-radius: 10px; }
+
+/* Promo banner */
+:root .promo { border-radius: var(--r-modal); }
+:root:not([data-theme="light"]) .promo {
+  background:
+    radial-gradient(circle at 90% 50%, rgba(183, 255, 56, 0.12), transparent 55%),
+    var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  backdrop-filter: blur(var(--glass-blur-sm));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+:root .code-chip { border-radius: 8px; }
+
+/* ==========================================================================
+   Catalog: filters, cards
+   ========================================================================== */
+:root .search-box {
+  border-radius: var(--r-input);
+  min-height: 44px;
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .search-box {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+}
+:root .search-box:focus-within {
+  border-color: var(--sh-lime);
+  box-shadow: var(--lime-ring);
+}
+:root .search-box input:focus-visible { outline: none; box-shadow: none; }
+
+:root .filter,
+:root .sort-group select,
+:root .advanced-filters select {
+  min-height: 44px;
+}
+:root .sort-group select,
+:root .advanced-filters select { border-radius: var(--r-input); }
+:root:not([data-theme="light"]) .filter,
+:root:not([data-theme="light"]) .sort-group select,
+:root:not([data-theme="light"]) .advanced-filters select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+  color: var(--sh-text-2);
+}
+:root:not([data-theme="light"]) .filter:hover,
+:root:not([data-theme="light"]) .sort-group select:hover,
+:root:not([data-theme="light"]) .advanced-filters select:hover {
+  color: var(--sh-text);
+  border-color: var(--glass-border-strong);
+}
+:root .filter.active,
+:root:not([data-theme="light"]) .filter.active {
+  background: var(--sh-lime);
+  border-color: var(--sh-lime);
+  color: var(--sh-on-lime);
+  box-shadow: 0 6px 18px rgba(183, 255, 56, 0.16);
+}
+:root:not([data-theme="light"]) .advanced-filters select option { background: #121212; color: #fff; }
+
+/* Product cards: semi-transparent glass, hover elevation */
+:root .product-card {
+  border-radius: var(--r-card);
+  transition: transform var(--t) var(--ease), border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), background-color var(--t) var(--ease);
+  animation: sh-rise 500ms var(--ease) backwards;
+}
+:root:not([data-theme="light"]) .product-card {
+  background: linear-gradient(180deg, rgba(24, 24, 24, 0.72), rgba(18, 18, 18, 0.62));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+:root .product-card:hover,
+:root .product-card:focus-within {
+  transform: translateY(-4px);
+  border-color: rgba(183, 255, 56, 0.35);
+  box-shadow: var(--glass-shadow-lg), 0 0 0 1px rgba(183, 255, 56, 0.12);
+}
+:root .product-photo {
+  border-radius: calc(var(--r-card) - 1px) calc(var(--r-card) - 1px) 0 0;
+}
+:root:not([data-theme="light"]) .product-photo {
+  background: radial-gradient(circle at 50% 60%, #222 0%, #141414 70%);
+}
+:root .product-photo img { transition: transform 450ms var(--ease); }
+:root .tag { border-radius: 6px; }
+:root .favorite {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-btn-sm);
+  display: grid;
+  place-items: center;
+  transition: background-color var(--t) var(--ease), color var(--t) var(--ease), transform var(--t-fast) var(--ease), border-color var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .favorite {
+  background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  backdrop-filter: blur(var(--glass-blur-sm));
+  border: 1px solid var(--glass-border-strong);
+  color: #fff;
+}
+:root .favorite:hover { transform: scale(1.06); border-color: rgba(183, 255, 56, 0.5); }
+:root .favorite.active { color: var(--sh-lime); }
+:root[data-theme="light"] .favorite.active { color: #111; }
+:root .favorite.inline { width: 44px; height: 44px; }
+:root:not([data-theme="light"]) .quick-view {
+  background: rgba(255, 255, 255, 0.92);
+  color: #0b0b0b;
+}
+:root .product-details { padding: var(--s-4) var(--s-4) var(--s-5); }
+:root:not([data-theme="light"]) .product-details p,
+:root:not([data-theme="light"]) .product-meta { color: var(--sh-text-2); }
+:root .product-bottom { margin-top: var(--s-4); }
+:root .add-btn {
+  min-height: 44px;
+  padding: 0 var(--s-4);
+  font-weight: 850;
+}
+:root:not([data-theme="light"]) .add-btn {
+  background: #fff;
+  color: #0b0b0b;
+  border: 1px solid #fff;
+}
+:root:not([data-theme="light"]) .add-btn:hover:not(:disabled) {
+  background: var(--sh-lime);
+  border-color: var(--sh-lime);
+  box-shadow: var(--lime-glow);
+}
+:root .stock-pill { border-radius: 999px; } /* existing small badge */
+
+/* Skeletons keep their shape */
+:root .skeleton-card { border-radius: var(--r-card); }
+
+/* ==========================================================================
+   Product page + quick view modal
+   ========================================================================== */
+:root .shoe-main-image,
+:root .shoe-thumbnails button { border-radius: var(--r-card); }
+:root:not([data-theme="light"]) .shoe-main-image {
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+:root .shoe-size-grid button,
+:root .shoe-color-grid button,
+:root .shoe-quantity button,
+:root .shoe-gallery-controls button {
+  border-radius: var(--r-btn-sm);
+  min-height: 44px;
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease), color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root .shoe-quantity button { min-width: 44px; }
+:root:not([data-theme="light"]) .shoe-size-grid button,
+:root:not([data-theme="light"]) .shoe-color-grid button,
+:root:not([data-theme="light"]) .shoe-quantity button {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+}
+:root .shoe-size-grid button.active,
+:root .shoe-color-grid button.active {
+  border-color: var(--sh-lime);
+  box-shadow: 0 0 0 1px var(--sh-lime) inset;
+}
+:root .shoe-size-grid button.active { background: var(--sh-lime); color: var(--sh-on-lime); }
+:root:not([data-theme="light"]) .shoe-color-grid button.active { background: rgba(183, 255, 56, 0.12); color: #fff; }
+:root .shoe-actions button { border-radius: var(--r-btn-lg); min-height: 52px; }
+:root .shoe-fav-btn { border-radius: var(--r-btn-lg); }
+:root:not([data-theme="light"]) .shoe-fav-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border-strong);
+}
+:root .shoe-specs div,
+:root .shoe-selection-summary,
+:root .shoe-notification,
+:root .review,
+:root .review-form { border-radius: var(--r-card); }
+:root:not([data-theme="light"]) .shoe-specs div,
+:root:not([data-theme="light"]) .review,
+:root:not([data-theme="light"]) .review-form {
+  background: var(--glass-bg-soft);
+  border: 1px solid var(--glass-border);
+}
+:root .review-form input,
+:root .review-form select,
+:root .review-form textarea { border-radius: var(--r-input); }
+
+/* Overlays & modals */
+:root:not([data-theme="light"]) .overlay,
+:root:not([data-theme="light"]) .cart-overlay {
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+:root .overlay { animation: sh-fade var(--t) var(--ease) backwards; }
+:root .product-modal,
+:root .auth-modal {
+  border-radius: var(--r-modal);
+  animation: sh-modal var(--t-slow) var(--ease) backwards;
+}
+:root:not([data-theme="light"]) .product-modal,
+:root:not([data-theme="light"]) .auth-modal {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  backdrop-filter: blur(var(--glass-blur-lg));
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-lg), var(--glass-highlight);
+}
+:root .size-grid button,
+:root .qv-sizes button { border-radius: var(--r-btn-sm); min-height: 44px; }
+
+/* ==========================================================================
+   Cart drawer
+   ========================================================================== */
+:root .shopping-cart {
+  transition: transform var(--t-slow) var(--ease), visibility var(--t-slow);
+}
+:root:not([data-theme="light"]) .shopping-cart {
+  background: rgba(14, 14, 14, 0.84);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  backdrop-filter: blur(var(--glass-blur-lg));
+  border-left: 1px solid var(--glass-border-strong);
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.45);
+}
+:root .shopping-cart.open { border-radius: var(--r-modal) 0 0 var(--r-modal); }
+:root .cart-header button { border-radius: var(--r-nav); min-width: 44px; min-height: 44px; }
+:root:not([data-theme="light"]) .cart-header button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+}
+:root .cart-product {
+  border-radius: var(--r-card);
+  padding: var(--s-3);
+  margin-bottom: var(--s-2);
+  transition: border-color var(--t) var(--ease), background-color var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .cart-product {
+  background: var(--glass-bg-soft);
+  border: 1px solid var(--glass-border);
+}
+:root .cart-product:hover { border-color: var(--glass-border-strong); }
+:root .cart-product img { border-radius: 10px; }
+:root .quantity-control {
+  border-radius: var(--r-btn-sm);
+  overflow: hidden;
+}
+:root:not([data-theme="light"]) .quantity-control {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+}
+:root .quantity-control button {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 8px;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+:root:not([data-theme="light"]) .quantity-control button { background: transparent; color: #fff; }
+:root:not([data-theme="light"]) .quantity-control button:hover:not(:disabled) { background: rgba(183, 255, 56, 0.14); color: var(--sh-lime); }
+:root .remove-product { border-radius: 8px; min-height: 32px; }
+:root .promo-input { border-radius: var(--r-input); }
+:root .promo-input input { border-radius: var(--r-input); min-height: 44px; }
+:root:not([data-theme="light"]) .promo-input input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+}
+:root .promo-input input:focus { border-color: var(--sh-lime); box-shadow: var(--lime-ring); outline: none; }
+:root .promo-input button { min-height: 44px; }
+:root:not([data-theme="light"]) .cart-summary,
+:root:not([data-theme="light"]) .shipping-progress {
+  background: var(--glass-bg-soft);
+  border: 1px solid var(--glass-border);
+}
+:root .cart-summary,
+:root .shipping-progress { border-radius: var(--r-card); padding: var(--s-4); }
+:root .progress-track { border-radius: 999px; overflow: hidden; }
+:root .progress-bar { box-shadow: 0 0 12px rgba(183, 255, 56, 0.45); transition: width var(--t-slow) var(--ease); }
+
+/* ==========================================================================
+   Checkout / success
+   ========================================================================== */
+:root .checkout-panel,
+:root .checkout-summary,
+:root .checkout-demo-notice,
+:root .payment-option {
+  border-radius: var(--r-card);
+}
+:root:not([data-theme="light"]) .checkout-panel,
+:root:not([data-theme="light"]) .checkout-summary {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  backdrop-filter: blur(var(--glass-blur-sm));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+:root .checkout-panel { padding: var(--s-5); }
+:root .checkout-summary { padding: var(--s-5); }
+:root .checkout-form input:not([type="checkbox"]):not([type="radio"]),
+:root .checkout-panel select,
+:root .field input:not([type="checkbox"]):not([type="radio"]),
+:root .field select {
+  border-radius: var(--r-input);
+  min-height: 48px;
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), background-color var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .checkout-form input:not([type="checkbox"]):not([type="radio"]),
+:root:not([data-theme="light"]) .checkout-panel select {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border-strong);
+  color: #fff;
+}
+:root .checkout-form input:focus,
+:root .checkout-panel select:focus {
+  border-color: var(--sh-lime);
+  box-shadow: var(--lime-ring);
+  outline: none;
+}
+:root:not([data-theme="light"]) .payment-option {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+}
+:root .payment-option.selected,
+:root:not([data-theme="light"]) .payment-option.selected {
+  border-color: var(--sh-lime);
+  box-shadow: 0 0 0 1px rgba(183, 255, 56, 0.4) inset;
+}
+:root .checkout-item img { border-radius: 10px; }
+:root .receipt-meta div { border-radius: 10px; }
+
+/* Grid children must be allowed to shrink (prevents 390px overflow). */
+:root .checkout-layout > *,
+:root .checkout-form,
+:root .checkout-panel,
+:root .checkout-summary,
+:root .checkout-summary label,
+:root .promo-input,
+:root .promo-input input { min-width: 0; }
+:root .checkout-summary .promo-input { width: 100%; max-width: 100%; }
+:root .checkout-form input:not([type="checkbox"]):not([type="radio"]),
+:root .checkout-panel select { width: 100%; min-width: 0; max-width: 100%; }
+
+/* ==========================================================================
+   Auth (Firebase flow untouched)
+   ========================================================================== */
+:root:not([data-theme="light"]) .auth-page {
+  background:
+    radial-gradient(800px 500px at 50% -10%, rgba(183, 255, 56, 0.09), transparent 65%),
+    radial-gradient(700px 500px at 100% 100%, rgba(255, 255, 255, 0.04), transparent 60%),
+    #000;
+}
+:root .auth-card {
+  border-radius: var(--r-modal);
+  animation: sh-modal var(--t-slow) var(--ease) backwards;
+}
+:root:not([data-theme="light"]) .auth-card {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  backdrop-filter: blur(var(--glass-blur-lg));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-lg), var(--glass-highlight);
+}
+:root .auth-tabs { border-radius: var(--r-nav); padding: 4px; }
+:root:not([data-theme="light"]) .auth-tabs {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border);
+}
+:root .auth-tabs button {
+  border-radius: 10px;
+  min-height: 44px;
+  transition: background-color var(--t) var(--ease), color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root .auth-tabs button.active { box-shadow: 0 6px 18px rgba(183, 255, 56, 0.16); }
+:root .auth-field > input,
+:root .auth-password input,
+:root .auth-form input:not([type="checkbox"]):not([type="radio"]),
+:root .password-field {
+  border-radius: var(--r-input);
+  min-height: 48px;
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), background-color var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .auth-field > input,
+:root:not([data-theme="light"]) .auth-password input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border-strong);
+}
+:root .auth-field input:focus {
+  border-color: var(--sh-lime);
+  box-shadow: var(--lime-ring);
+  outline: none;
+}
+:root .auth-eye { border-radius: 8px; min-width: 40px; min-height: 40px; }
+:root .auth-link { min-height: 32px; }
+:root .auth-error,
+:root .auth-success,
+:root .auth-switch-banner { border-radius: var(--r-btn); }
+:root .auth-google { min-height: 48px; }
+
+/* ==========================================================================
+   Account dashboard
+   ========================================================================== */
+:root .account-tabs {
+  border-radius: var(--r-nav);
+  padding: 4px;
+  gap: 4px;
+  position: sticky;
+  top: 72px;
+  z-index: 5;
+}
+:root:not([data-theme="light"]) .account-tabs {
+  background: rgba(12, 12, 12, 0.7);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+:root .account-tabs a {
+  border-radius: 10px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  transition: background-color var(--t) var(--ease), color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+:root .account-tabs a[aria-current="true"] {
+  background: var(--sh-lime);
+  color: var(--sh-on-lime);
+  border-color: var(--sh-lime);
+}
+:root .account-profile,
+:root .account-panel,
+:root .account-order-card,
+:root .favorite-card,
+:root .account-stats div,
+:root .empty-state,
+:root .account-placeholder,
+:root .account-detail,
+:root .claim-form,
+:root .link-accounts {
+  border-radius: var(--r-card);
+}
+:root:not([data-theme="light"]) .account-profile {
+  background:
+    radial-gradient(circle at 100% 0%, rgba(183, 255, 56, 0.10), transparent 50%),
+    var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+:root:not([data-theme="light"]) .account-panel {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  backdrop-filter: blur(var(--glass-blur-sm));
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+}
+:root .account-panel { animation: sh-rise 450ms var(--ease) backwards; }
+:root:not([data-theme="light"]) .account-stats div {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid var(--glass-border);
+}
+:root .account-stats div { transition: border-color var(--t) var(--ease), transform var(--t) var(--ease); }
+:root .account-stats div:hover { border-color: rgba(183, 255, 56, 0.35); transform: translateY(-2px); }
+:root .account-stats strong { color: var(--sh-lime); }
+:root[data-theme="light"] .account-stats strong { color: #111; }
+:root:not([data-theme="light"]) .account-order-card,
+:root:not([data-theme="light"]) .favorite-card,
+:root:not([data-theme="light"]) .account-detail,
+:root:not([data-theme="light"]) .account-placeholder {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--glass-border);
+}
+:root .account-order-card,
+:root .favorite-card {
+  transition: border-color var(--t) var(--ease), transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root .account-order-card:hover,
+:root .favorite-card:hover {
+  border-color: rgba(183, 255, 56, 0.3);
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow);
+}
+:root .favorite-card img,
+:root .order-thumbs img,
+:root .order-line img { border-radius: 10px; }
+:root .account-order-status { border-radius: 999px; } /* small status badge */
+:root .account-panel input:not([type="checkbox"]):not([type="radio"]),
+:root .claim-form input,
+:root .link-accounts input {
+  border-radius: var(--r-input);
+  min-height: 48px;
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+:root:not([data-theme="light"]) .account-panel input:not([type="checkbox"]):not([type="radio"]),
+:root:not([data-theme="light"]) .claim-form input,
+:root:not([data-theme="light"]) .link-accounts input {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-border-strong);
+}
+:root .account-panel input:not([type="checkbox"]):not([type="radio"]):focus,
+:root .claim-form input:focus,
+:root .link-accounts input:focus {
+  border-color: var(--sh-lime);
+  box-shadow: var(--lime-ring);
+  outline: none;
+}
+:root .account-primary,
+:root .account-secondary,
+:root .account-logout { min-height: 44px; }
+:root .account-logout { border-radius: var(--r-btn); }
+:root:not([data-theme="light"]) .empty-state {
+  background: var(--glass-bg-soft);
+  border: 1px dashed var(--glass-border-strong);
+}
+:root .empty-state .empty-icon { filter: drop-shadow(0 0 18px rgba(183, 255, 56, 0.25)); }
+
+/* ==========================================================================
+   Footer
+   ========================================================================== */
+:root:not([data-theme="light"]) .footer {
+  background: linear-gradient(180deg, rgba(18, 18, 18, 0.55), rgba(0, 0, 0, 0.85));
+  -webkit-backdrop-filter: blur(var(--glass-blur-sm));
+  backdrop-filter: blur(var(--glass-blur-sm));
+  border-top: 1px solid var(--glass-border);
+}
+:root:not([data-theme="light"]) .footer p,
+:root:not([data-theme="light"]) .footer-grid > div > a:not(.logo) { color: var(--sh-text-2); }
+:root .footer-grid > div > a:not(.logo) { transition: color var(--t) var(--ease); }
+:root .footer h4 { letter-spacing: 0.02em; }
+:root:not([data-theme="light"]) .footer-bottom { border-top: 1px solid var(--glass-border); color: var(--sh-text-3); }
+:root .newsletter { border-radius: var(--r-input); min-height: 48px; }
+:root:not([data-theme="light"]) .newsletter {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border-strong);
+}
+:root .newsletter:focus-within { border-color: var(--sh-lime); box-shadow: var(--lime-ring); }
+:root .newsletter input:focus-visible { outline: none; box-shadow: none; }
+
+/* Toasts */
+:root .toast { border-radius: var(--r-btn); }
+:root:not([data-theme="light"]) .toast {
+  background: rgba(18, 18, 18, 0.86);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow-lg);
+}
+
+/* Not found / error boundary cards */
+:root .not-found,
+:root .error-boundary { border-radius: var(--r-card); }
+
+/* ==========================================================================
+   Light theme glass variants (still lime accent)
+   ========================================================================== */
+/* The hero photo used mix-blend-mode: lighten, which washed it out on white. */
+:root[data-theme="light"] .hero-image { mix-blend-mode: normal; }
+:root[data-theme="light"] .hero p { color: #4a4a4a; }
+:root[data-theme="light"] .header {
+  background: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: saturate(160%) blur(var(--glass-blur));
+  backdrop-filter: saturate(160%) blur(var(--glass-blur));
+  border-bottom: 1px solid var(--glass-border);
+}
+:root[data-theme="light"] .account-dropdown,
+:root[data-theme="light"] .search-suggestions,
+:root[data-theme="light"] .auth-card,
+:root[data-theme="light"] .account-tabs,
+:root[data-theme="light"] .toast {
+  background: var(--glass-bg-strong);
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border-strong);
+  box-shadow: var(--glass-shadow);
+}
+:root[data-theme="light"] .shopping-cart {
+  -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+  backdrop-filter: blur(var(--glass-blur-lg));
+}
+
+/* ==========================================================================
+   Keyframes
+   ========================================================================== */
+@keyframes sh-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sh-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes sh-pop {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes sh-modal {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ==========================================================================
+   Fallbacks
+   ========================================================================== */
+/* No backdrop-filter support: use opaque surfaces so text stays readable. */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  :root:not([data-theme="light"]) .header { background: rgba(0, 0, 0, 0.96); }
+  :root:not([data-theme="light"]) :is(.glass-panel, .glass-strong, .account-dropdown, .search-suggestions,
+    .auth-card, .account-profile, .account-panel, .account-tabs, .checkout-panel, .checkout-summary,
+    .benefits > div, .promo, .product-modal, .auth-modal, .toast, .nav-links.open) {
+    background: #181818;
+  }
+  :root:not([data-theme="light"]) .shopping-cart { background: #121212; }
+}
+
+/* User asked the OS for less transparency: fully opaque surfaces, no blur. */
+@media (prefers-reduced-transparency: reduce) {
+  :root :is(.header, .glass-panel, .glass-strong, .glass-soft, .account-dropdown, .search-suggestions,
+    .auth-card, .account-profile, .account-panel, .account-tabs, .checkout-panel, .checkout-summary,
+    .benefits > div, .promo, .product-modal, .auth-modal, .toast, .nav-links.open, .shopping-cart,
+    .overlay, .cart-overlay, .favorite, .footer, .product-card, .cart-product, .cart-summary,
+    .shipping-progress, .account-stats div, .account-order-card, .favorite-card, .empty-state) {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  :root:not([data-theme="light"]) .header { background: #000; }
+  :root:not([data-theme="light"]) :is(.glass-panel, .glass-strong, .account-dropdown, .search-suggestions,
+    .auth-card, .account-profile, .account-panel, .account-tabs, .checkout-panel, .checkout-summary,
+    .benefits > div, .promo, .product-modal, .auth-modal, .toast, .nav-links.open, .product-card) {
+    background: #181818;
+  }
+  :root:not([data-theme="light"]) :is(.shopping-cart, .footer) { background: #121212; }
+  :root:not([data-theme="light"]) :is(.cart-product, .cart-summary, .shipping-progress, .account-stats div,
+    .account-order-card, .favorite-card, .empty-state, .glass-soft, .favorite) {
+    background: #121212;
+  }
+  :root:not([data-theme="light"]) :is(.overlay, .cart-overlay) { background: rgba(0, 0, 0, 0.85); }
+  :root[data-theme="light"] :is(.header, .account-dropdown, .search-suggestions, .auth-card, .account-tabs, .toast) {
+    background: #fff;
+  }
+}
+
+/* Reduced motion: no entrance/hover movement (upgrade.css also shortens durations). */
+@media (prefers-reduced-motion: reduce) {
+  :root :is(.hero-content > *, .hero-image, .product-card, .account-panel, .auth-card, .product-modal,
+    .auth-modal, .overlay, .account-dropdown, .search-suggestions, .nav-links.open) {
+    animation: none;
+  }
+  :root :is(.product-card, .category-card, .benefits > div, .account-order-card, .favorite-card,
+    .account-stats div, .favorite):hover {
+    transform: none;
+  }
+}
+
+/* Mobile header: keep the avatar initial visible (only the name + caret hide) */
+@media (max-width: 900px) {
+  :root .account-trigger > .user-avatar { display: grid; }
+}
+
+/* Small screens: tighter rhythm, keep 44px targets */
+@media (max-width: 600px) {
+  :root .section { margin-top: var(--s-7); }
+  :root .checkout-panel,
+  :root .checkout-summary { padding: var(--s-4); }
+  :root .account-tabs {
+    position: static;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    scrollbar-width: none;
+  }
+  :root .account-tabs a { white-space: nowrap; flex: 0 0 auto; }
+  :root .shopping-cart.open { border-radius: 0; }
+}
