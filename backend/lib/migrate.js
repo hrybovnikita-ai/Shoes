@@ -57,8 +57,10 @@ async function migrate(pool, { dir, dryRun = false, log = () => {} } = {}) {
   const appliedNow = [];
   try {
     await client.query("SELECT pg_advisory_lock($1)", [LOCK_KEY]);
-    await ensureTable(client);
-    const { rows } = await client.query("SELECT name, checksum FROM shoes_schema_migrations");
+    // Dry-run is strictly read-only: it does not even create the tracking table.
+    if (!dryRun) await ensureTable(client);
+    const exists = (await client.query("SELECT to_regclass('shoes_schema_migrations') AS t")).rows[0].t;
+    const { rows } = exists ? await client.query("SELECT name, checksum FROM shoes_schema_migrations") : { rows: [] };
     const applied = new Map(rows.map((r) => [r.name, r.checksum]));
     for (const m of listMigrationFiles(dir)) {
       if (applied.has(m.name)) {
