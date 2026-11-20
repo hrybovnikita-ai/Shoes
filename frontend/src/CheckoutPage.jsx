@@ -1,12 +1,27 @@
-import { useEffect, useState } from "react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
+
 import { auth } from "./firebase";
 import { shoesAPI } from "./api";
 import "./CheckoutPage.css";
 
+const PROMO_CODES = {
+  SHOES10: 0.1,
+  WELCOME15: 0.15,
+};
+
+const SHIPPING_FEE = 10;
+const FREE_SHIPPING_THRESHOLD = 150;
+
 const money = (value) =>
-  `$${Number(value || 0).toFixed(2)}`;
+  `$${(Number(value) || 0).toFixed(2)}`;
+
+const validQuantity = (value) =>
+  Number.isInteger(Number(value)) &&
+  Number(value) >= 1 &&
+  Number(value) <= 10;
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -16,37 +31,6 @@ export default function CheckoutPage() {
   const [error, setError] = useState("");
   const [authReady, setAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-
-  // ==========================================
-  // FIREBASE AUTHENTICATION
-  // ==========================================
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (user) => {
-        setCurrentUser(user);
-        setAuthReady(true);
-
-        if (user) {
-          setForm((previous) => ({
-            ...previous,
-            name:
-              previous.name ||
-              user.displayName ||
-              "",
-            email: user.email || previous.email,
-          }));
-        }
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  // ==========================================
-  // CHECKOUT PRODUCTS
-  // ==========================================
 
   const [items] = useState(() => {
     const state = location.state;
@@ -62,42 +46,99 @@ export default function CheckoutPage() {
     );
   });
 
-  // ==========================================
-  // CHECKOUT FORM
-  // ==========================================
-
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     address: "",
+    apartment: "",
     city: "",
     country: "",
     postalCode: "",
-    card: "",
-    expiry: "",
-    cvv: "",
   });
 
-  // ==========================================
-  // ORDER SUMMARY
-  // ==========================================
+  const [deliveryMethod, setDeliveryMethod] =
+    useState("standard");
 
-  const subtotal = items.reduce(
-    (sum, item) =>
-      sum +
-      Number(item.price || 0) *
-        Number(item.quantity || 1),
-    0
-  );
+  const promoCode = String(
+    location.state?.promoCode || ""
+  ).toUpperCase();
 
-  const shipping =
-    subtotal === 0 || subtotal >= 150 ? 0 : 12;
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (user) => {
+        setCurrentUser(user);
 
-  const total = subtotal + shipping;
+        if (user) {
+          setForm((previous) => ({
+            ...previous,
+            name:
+              previous.name ||
+              user.displayName ||
+              "",
+            email:
+              user.email ||
+              previous.email,
+          }));
+        }
 
-  // ==========================================
-  // UPDATE FORM
-  // ==========================================
+        setAuthReady(true);
+      },
+      (authError) => {
+        console.error(
+          "Firebase authentication error:",
+          authError
+        );
+
+        setCurrentUser(null);
+        setAuthReady(true);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  const summary = useMemo(() => {
+    const subtotal = items.reduce(
+      (sum, item) =>
+        sum +
+        (Number(item.price) || 0) *
+          (Number(item.quantity) || 1),
+      0
+    );
+
+    const discountRate =
+      PROMO_CODES[promoCode] || 0;
+
+    const discount =
+      subtotal * discountRate;
+
+    const shipping =
+      subtotal === 0 ||
+      subtotal >= FREE_SHIPPING_THRESHOLD
+        ? 0
+        : SHIPPING_FEE;
+
+    const total = Math.max(
+      0,
+      subtotal - discount + shipping
+    );
+
+    const itemCount = items.reduce(
+      (sum, item) =>
+        sum + (Number(item.quantity) || 1),
+      0
+    );
+
+    return {
+      subtotal,
+      discount,
+      shipping,
+      total,
+      itemCount,
+    };
+  }, [items, promoCode]);
 
   const update = (event) => {
     const { name, value } = event.target;
@@ -107,78 +148,99 @@ export default function CheckoutPage() {
       [name]: value,
     }));
 
-    if (error) {
-      setError("");
-    }
+    if (error) setError("");
   };
 
-  // ==========================================
-  // PLACE DEMO ORDER
-  // ==========================================
+  const validateOrder = () => {
+    if (!items.length) {
+      throw new Error(
+        "Your shopping cart is empty."
+      );
+    }
+
+    for (const item of items) {
+      if (
+        !Number.isInteger(Number(item.id)) ||
+        !Number.isInteger(Number(item.size)) ||
+        !validQuantity(item.quantity || 1)
+      ) {
+        throw new Error(
+          "Please select valid products, sizes and quantities."
+        );
+      }
+
+      if (!item.color) {
+        throw new Error(
+          "Please select a color for every product."
+        );
+      }
+    }
+
+    if (
+      !form.name.trim() ||
+      !(currentUser?.email || form.email.trim())
+    ) {
+      throw new Error(
+        "Please enter your name and email."
+      );
+    }
+
+    if (
+      !form.address.trim() ||
+      !form.city.trim() ||
+      !form.country.trim() ||
+      !form.postalCode.trim()
+    ) {
+      throw new Error(
+        "Please complete your shipping address."
+      );
+    }
+  };
 
   const placeOrder = async (event) => {
     event.preventDefault();
 
-    if (
-      loading ||
-      !authReady ||
-      items.length === 0
-    ) {
-      return;
-    }
+    if (loading || !authReady) return;
 
     setLoading(true);
     setError("");
 
     try {
+      validateOrder();
+
       const user = auth.currentUser;
 
       const customer = {
         name: form.name.trim(),
-        email: user?.email || form.email.trim(),
+        email:
+          user?.email ||
+          form.email.trim(),
+        phone: form.phone.trim(),
+        shippingAddress: {
+          street: form.address.trim(),
+          apartment: form.apartment.trim(),
+          city: form.city.trim(),
+          country: form.country.trim(),
+          postalCode: form.postalCode.trim(),
+        },
+        deliveryMethod,
+        promoCode,
       };
 
-      if (!customer.name || !customer.email) {
-        throw new Error(
-          "Please enter your name and email."
-        );
-      }
-
-      // Validate order items.
       const orderItems = items.map((item) => ({
         id: Number(item.id),
         size: Number(item.size),
+        color: item.color,
         quantity: Number(item.quantity || 1),
       }));
-
-      if (
-        orderItems.some(
-          (item) =>
-            !Number.isInteger(item.id) ||
-            !Number.isInteger(item.size) ||
-            !Number.isInteger(item.quantity) ||
-            item.quantity < 1
-        )
-      ) {
-        throw new Error(
-          "Please select valid products and sizes."
-        );
-      }
-
-      // ======================================
-      // FIREBASE ID TOKEN
-      // ======================================
 
       const firebaseToken = user
         ? await user.getIdToken()
         : null;
 
-      // ======================================
-      // BACKEND REQUEST
-      // ======================================
-
-      // Payment card details are NOT sent.
-      // The backend calculates prices itself.
+      // Backend must independently validate
+      // products, stock, promo codes and totals.
+      // No payment information is transmitted.
       const result = await shoesAPI.createOrder(
         customer,
         orderItems,
@@ -192,13 +254,9 @@ export default function CheckoutPage() {
       ) {
         throw new Error(
           result?.message ||
-            "The server returned an invalid order response."
+          "The server returned an invalid order response."
         );
       }
-
-      // ======================================
-      // SAVE DEMO RECEIPT
-      // ======================================
 
       sessionStorage.setItem(
         "shoes-last-order",
@@ -209,18 +267,6 @@ export default function CheckoutPage() {
         "shoes-receipt-token",
         result.receiptToken
       );
-
-      // Clear sensitive fields.
-      setForm((previous) => ({
-        ...previous,
-        card: "",
-        expiry: "",
-        cvv: "",
-      }));
-
-      // ======================================
-      // SUCCESS PAGE
-      // ======================================
 
       navigate("/success", {
         replace: true,
@@ -237,23 +283,18 @@ export default function CheckoutPage() {
 
       setError(
         err?.message ||
-          "Unable to process your demo order. Please try again."
+        "Unable to process your demo order."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  // ==========================================
-  // EMPTY CHECKOUT
-  // ==========================================
-
   if (items.length === 0) {
     return (
       <main className="checkout-page">
         <div className="checkout-empty">
           <h1>Your Cart Is Empty</h1>
-
           <p>
             Select your favorite sneakers to continue.
           </p>
@@ -269,15 +310,9 @@ export default function CheckoutPage() {
     );
   }
 
-  // ==========================================
-  // CHECKOUT PAGE
-  // ==========================================
-
   return (
     <main className="checkout-page">
       <div className="checkout-container">
-        {/* BACK BUTTON */}
-
         <button
           type="button"
           className="checkout-back"
@@ -287,59 +322,46 @@ export default function CheckoutPage() {
           ← Back
         </button>
 
-        {/* HEADER */}
-
         <div className="checkout-heading">
           <span>SHOES / DEMO CHECKOUT</span>
-
           <h1>Checkout</h1>
-
           <p>
             Complete your demo order.
             No real money will be charged.
           </p>
         </div>
 
-        {/* AUTHENTICATION STATUS */}
-
         {authReady && currentUser && (
-          <div
-            className="checkout-demo-notice"
-            style={{ marginBottom: 20 }}
-          >
+          <div className="checkout-demo-notice">
             Signed in as{" "}
-            <strong>{currentUser.email}</strong>.
-            Your order can be linked to your account.
+            <strong>
+              {currentUser.email}
+            </strong>
+            . Your order can be linked
+            to your account.
           </div>
         )}
 
         {authReady && !currentUser && (
-          <div
-            className="checkout-demo-notice"
-            style={{ marginBottom: 20 }}
-          >
-            Guest Checkout — You can place a demo
-            order without signing in. Guest orders
-            will not appear in My Orders.
+          <div className="checkout-demo-notice">
+            Guest Checkout — You can place
+            a demo order without signing in.
+            Guest orders will not appear
+            in My Orders.
           </div>
         )}
 
         <div className="checkout-layout">
-          {/* CHECKOUT FORM */}
-
           <form
             id="demo-checkout-form"
             className="checkout-form"
             onSubmit={placeOrder}
           >
-            {/* CONTACT INFORMATION */}
-
             <section className="checkout-panel">
               <h2>01. Contact Information</h2>
 
               <label>
                 Full Name
-
                 <input
                   type="text"
                   name="name"
@@ -354,7 +376,6 @@ export default function CheckoutPage() {
 
               <label>
                 Email Address
-
                 <input
                   type="email"
                   name="email"
@@ -367,16 +388,26 @@ export default function CheckoutPage() {
                   required
                 />
               </label>
-            </section>
 
-            {/* SHIPPING ADDRESS */}
+              <label>
+                Phone Number
+                <input
+                  type="tel"
+                  name="phone"
+                  value={form.phone}
+                  onChange={update}
+                  placeholder="+1 555 123 4567"
+                  autoComplete="tel"
+                  maxLength={30}
+                />
+              </label>
+            </section>
 
             <section className="checkout-panel">
               <h2>02. Shipping Address</h2>
 
               <label>
                 Street Address
-
                 <input
                   type="text"
                   name="address"
@@ -388,10 +419,20 @@ export default function CheckoutPage() {
                 />
               </label>
 
+              <label>
+                Apartment / Suite
+                <input
+                  type="text"
+                  name="apartment"
+                  value={form.apartment}
+                  onChange={update}
+                  placeholder="Apartment 12"
+                />
+              </label>
+
               <div className="checkout-fields">
                 <label>
                   City
-
                   <input
                     type="text"
                     name="city"
@@ -405,7 +446,6 @@ export default function CheckoutPage() {
 
                 <label>
                   Country
-
                   <input
                     type="text"
                     name="country"
@@ -420,7 +460,6 @@ export default function CheckoutPage() {
 
               <label>
                 Postal Code
-
                 <input
                   type="text"
                   name="postalCode"
@@ -433,71 +472,40 @@ export default function CheckoutPage() {
               </label>
             </section>
 
-            {/* DEMO PAYMENT */}
-
             <section className="checkout-panel">
-              <h2>03. Demo Payment</h2>
-
-              <div className="checkout-demo-notice">
-                DEMO MODE — No real payments are
-                processed. Enter fictional test
-                numbers only.
-              </div>
+              <h2>03. Delivery Method</h2>
 
               <label>
-                Test Card Number
-
                 <input
-                  type="text"
-                  name="card"
-                  value={form.card}
-                  onChange={update}
-                  placeholder="1111 2222 3333 4444"
-                  inputMode="numeric"
-                  pattern="[0-9 ]{12,23}"
-                  maxLength={23}
-                  autoComplete="off"
-                  required
+                  type="radio"
+                  name="delivery"
+                  value="standard"
+                  checked={deliveryMethod === "standard"}
+                  onChange={() =>
+                    setDeliveryMethod("standard")
+                  }
                 />
+                Standard Delivery
               </label>
 
-              <div className="checkout-fields">
-                <label>
-                  Expiration Date
-
-                  <input
-                    type="text"
-                    name="expiry"
-                    value={form.expiry}
-                    onChange={update}
-                    placeholder="12/30"
-                    pattern="(0[1-9]|1[0-2])/[0-9]{2}"
-                    maxLength={5}
-                    autoComplete="off"
-                    required
-                  />
-                </label>
-
-                <label>
-                  Test CVV
-
-                  <input
-                    type="text"
-                    name="cvv"
-                    value={form.cvv}
-                    onChange={update}
-                    placeholder="123"
-                    pattern="[0-9]{3,4}"
-                    maxLength={4}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    required
-                  />
-                </label>
-              </div>
+              <p className="checkout-disclaimer">
+                Free shipping on orders of
+                $150 or more. Otherwise $10.
+              </p>
             </section>
 
-            {/* ERROR MESSAGE */}
+            <section className="checkout-panel">
+              <h2>04. Payment Method</h2>
+
+              <div className="checkout-demo-notice">
+                <strong>Demo Payment</strong>
+                <p>
+                  This is a demonstration
+                  order. No real payments
+                  will be processed.
+                </p>
+              </div>
+            </section>
 
             {error && (
               <p
@@ -511,8 +519,6 @@ export default function CheckoutPage() {
               </p>
             )}
 
-            {/* SUBMIT ORDER */}
-
             <button
               className="checkout-submit"
               type="submit"
@@ -523,11 +529,9 @@ export default function CheckoutPage() {
                 ? "Processing Demo Order..."
                 : !authReady
                   ? "Loading Account..."
-                  : `Place Demo Order — ${money(total)} →`}
+                  : `Place Demo Order — ${money(summary.total)} →`}
             </button>
           </form>
-
-          {/* ORDER SUMMARY */}
 
           <aside className="checkout-summary">
             <h2>Order Summary</h2>
@@ -535,7 +539,7 @@ export default function CheckoutPage() {
             {items.map((item, index) => (
               <div
                 className="checkout-item"
-                key={`${item.id}-${item.size}-${index}`}
+                key={`${item.id}-${item.size}-${item.color}-${index}`}
               >
                 <img
                   src={item.image}
@@ -547,8 +551,11 @@ export default function CheckoutPage() {
                   <strong>{item.name}</strong>
 
                   <small>
-                    Size:{" "}
-                    {item.size ?? "Not selected"}
+                    Size: EU {item.size}
+                  </small>
+
+                  <small>
+                    Color: {item.color || "Default"}
                   </small>
 
                   <small>
@@ -558,41 +565,64 @@ export default function CheckoutPage() {
                   <span>
                     {money(
                       Number(item.price || 0) *
-                        Number(item.quantity || 1)
+                      Number(item.quantity || 1)
                     )}
                   </span>
                 </div>
               </div>
             ))}
 
-            {/* TOTALS */}
-
             <div className="checkout-totals">
               <div>
-                <span>Subtotal</span>
-                <strong>{money(subtotal)}</strong>
+                <span>Items</span>
+                <strong>{summary.itemCount}</strong>
               </div>
 
               <div>
-                <span>Shipping</span>
-
+                <span>Subtotal</span>
                 <strong>
-                  {shipping === 0
+                  {money(summary.subtotal)}
+                </strong>
+              </div>
+
+              {summary.discount > 0 && (
+                <div>
+                  <span>
+                    Discount ({promoCode})
+                  </span>
+                  <strong>
+                    -{money(summary.discount)}
+                  </strong>
+                </div>
+              )}
+
+              <div>
+                <span>Shipping</span>
+                <strong>
+                  {summary.shipping === 0
                     ? "FREE"
-                    : money(shipping)}
+                    : money(summary.shipping)}
                 </strong>
               </div>
 
               <div className="checkout-grand-total">
                 <span>Total</span>
-                <strong>{money(total)}</strong>
+                <strong>
+                  {money(summary.total)}
+                </strong>
               </div>
             </div>
 
             <p className="checkout-disclaimer">
-              This is a demonstration storefront.
-              No real purchases, payments or
-              deliveries occur.
+              This is a demonstration
+              storefront. No real purchases,
+              payments or deliveries occur.
+            </p>
+
+            <p className="checkout-disclaimer">
+              Final order amounts are
+              calculated and validated
+              by the backend.
             </p>
           </aside>
         </div>

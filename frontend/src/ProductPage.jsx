@@ -1,147 +1,193 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./ProductPage.css";
 
-export default function ProductPage({
-  products = [],
-  onAddToCart,
-}) {
+const DEFAULT_SIZES = Array.from({ length: 11 }, (_, i) => i + 36);
+
+export default function ProductPage({ products = [], onAddToCart }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const id = location.pathname.split("/")[2];
 
-  // Get product ID directly from URL: /product/1
-  const id = Number(location.pathname.split("/")[2]);
-
-  // Find product in catalog
   const product = products.find(
-    (item) => Number(item.id) === id
+    (item) => String(item.id) === String(id)
   );
 
   const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [notification, setNotification] = useState("");
 
-  // Product not found
+  useEffect(() => {
+    setSelectedSize(null);
+    setSelectedColor("");
+    setQuantity(1);
+    setActiveImage(0);
+    setNotification("");
+  }, [id]);
+
   if (!product) {
     return (
       <main className="shoe-not-found">
         <h1>Product Not Found</h1>
-        <p>
-          The product you are looking for does not exist.
-        </p>
-
-        <button
-          type="button"
-          onClick={() => navigate("/shop")}
-        >
+        <p>The product you are looking for does not exist.</p>
+        <button onClick={() => navigate("/shop")}>
           Back to Shop →
         </button>
       </main>
     );
   }
 
-  // Product gallery
   const images = [
     product.image,
-    ...(product.images || []),
-  ].filter(
-    (image, index, array) =>
-      image && array.indexOf(image) === index
+    ...(Array.isArray(product.images) ? product.images : []),
+  ].filter((image, index, array) =>
+    image && array.indexOf(image) === index
   );
 
-  // Available shoe sizes
-  const sizes = [
-    7, 8, 8.5, 9, 9.5, 10, 11, 12,
-  ];
+  const sizes = Array.isArray(product.sizes) && product.sizes.length
+    ? product.sizes
+    : DEFAULT_SIZES;
 
-  const increaseQuantity = () => {
-    setQuantity((current) => Math.min(10, current + 1));
+  const colors = Array.isArray(product.colors) && product.colors.length
+    ? product.colors
+    : [product.color || "Default"];
+
+  const stock = Number.isFinite(Number(product.stock))
+    ? Math.max(0, Number(product.stock))
+    : 10;
+
+  const maxQuantity = Math.min(10, stock);
+  const outOfStock = stock === 0;
+
+  const price = Number(product.price) || 0;
+  const oldPrice = Number(product.oldPrice) || 0;
+
+  const discount = oldPrice > price && price > 0
+    ? Math.round(((oldPrice - price) / oldPrice) * 100)
+    : 0;
+
+  const changeImage = (direction) => {
+    if (!images.length) return;
+
+    setActiveImage((current) =>
+      (current + direction + images.length) % images.length
+    );
   };
 
-  const decreaseQuantity = () => {
-    setQuantity((current) => Math.max(1, current - 1));
-  };
+  const createCartItem = () => {
+    if (outOfStock) {
+      setNotification("This product is out of stock.");
+      return null;
+    }
 
-  // Add product to cart
-  const addToCart = () => {
     if (selectedSize === null) {
-      setNotification("Please select your shoe size.");
+      setNotification("Please select your EU shoe size.");
+      return null;
+    }
+
+    if (!selectedColor) {
+      setNotification("Please select a color.");
+      return null;
+    }
+
+    setNotification("");
+
+    return {
+      ...product,
+      size: selectedSize,
+      sizeSystem: "EU",
+      color: selectedColor,
+      quantity,
+    };
+  };
+
+  const addToCart = () => {
+    const item = createCartItem();
+    if (!item) return;
+
+    if (typeof onAddToCart !== "function") {
+      setNotification("Cart is temporarily unavailable.");
       return;
     }
 
-    onAddToCart?.({
-      ...product,
-      size: selectedSize,
-      quantity,
-    });
-
+    onAddToCart(item);
     setNotification("Product added to cart successfully!");
   };
 
-  // Redirect to demo checkout
   const buyNow = () => {
-    if (selectedSize === null) {
-      setNotification("Please select your shoe size.");
-      return;
-    }
-
-    const selectedProduct = {
-      ...product,
-      size: selectedSize,
-      quantity,
-    };
+    const item = createCartItem();
+    if (!item) return;
 
     navigate("/checkout", {
       state: {
-        product: selectedProduct,
-        items: [selectedProduct],
+        product: item,
+        items: [item],
       },
     });
   };
 
   return (
     <main className="shoe-product-page">
-      {/* Breadcrumb */}
       <div className="shoe-breadcrumb">
-        <button
-          type="button"
-          onClick={() => navigate("/shop")}
-        >
+        <button type="button" onClick={() => navigate("/shop")}>
           ← Back to Shop
         </button>
-
         <span> / {product.name}</span>
       </div>
 
       <div className="shoe-product-layout">
-        {/* Product Gallery */}
         <section className="shoe-gallery">
           <div className="shoe-main-image">
-            <img
-              src={images[activeImage] || product.image}
-              alt={product.name}
-            />
+            {images.length > 0 && (
+              <img
+                src={images[activeImage] || images[0]}
+                alt={`${product.name} - image ${activeImage + 1}`}
+              />
+            )}
 
             {product.badge && (
               <span className="shoe-product-badge">
                 {product.badge}
               </span>
             )}
+
+            {discount > 0 && (
+              <span className="shoe-discount-badge">
+                -{discount}%
+              </span>
+            )}
+
+            {images.length > 1 && (
+              <div className="shoe-gallery-controls">
+                <button
+                  type="button"
+                  onClick={() => changeImage(-1)}
+                  aria-label="Previous image"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeImage(1)}
+                  aria-label="Next image"
+                >
+                  →
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Thumbnails */}
           <div className="shoe-thumbnails">
             {images.map((image, index) => (
               <button
                 type="button"
                 key={`${image}-${index}`}
-                className={
-                  activeImage === index ? "selected" : ""
-                }
+                className={activeImage === index ? "selected" : ""}
                 onClick={() => setActiveImage(index)}
                 aria-label={`View image ${index + 1}`}
+                aria-pressed={activeImage === index}
               >
                 <img
                   src={image}
@@ -154,73 +200,47 @@ export default function ProductPage({
 
           <p className="shoe-gallery-caption">
             {images.length} product image
-            {images.length !== 1 ? "s" : ""} available
+            {images.length === 1 ? "" : "s"} available
           </p>
         </section>
 
-        {/* Product Information */}
         <section className="shoe-product-info">
-          <span className="shoe-label">
-            PREMIUM FOOTWEAR
-          </span>
-
+          <span className="shoe-label">PREMIUM FOOTWEAR</span>
           <h1>{product.name}</h1>
 
           <p className="shoe-brand">
-            {product.brand || "Nike"} / {product.category}
+            {product.brand || "Unknown Brand"} / {product.category}
           </p>
 
-          {/* Rating */}
           <div className="shoe-rating">
-            <span>★ {product.rating || "4.8"}</span>
+            <span>★ {product.rating ?? "Not rated"}</span>
             <span>Premium Selection</span>
           </div>
 
-          {/* Price */}
           <div className="shoe-price">
-            <strong>
-              ${Number(product.price).toFixed(2)}
-            </strong>
-
-            {product.oldPrice && (
-              <del>
-                ${Number(product.oldPrice).toFixed(2)}
-              </del>
+            <strong>${price.toFixed(2)}</strong>
+            {oldPrice > price && (
+              <del>${oldPrice.toFixed(2)}</del>
             )}
           </div>
 
-          {/* Description */}
           <p className="shoe-description">
             {product.description ||
-              "Discover exceptional comfort, modern design, and everyday performance. Built for your next move. Premium materials and a timeless silhouette make this pair a perfect addition to your collection."}
+              "Discover exceptional comfort, modern design and everyday performance. Premium footwear designed for your next move."}
           </p>
 
-          {/* Product Details */}
           <div className="shoe-extra-info">
-            <p>
-              <strong>Brand:</strong> {product.brand}
-            </p>
-
-            <p>
-              <strong>Category:</strong> {product.category}
-            </p>
-
-            <p>
-              <strong>Color:</strong> {product.color}
-            </p>
-
+            <p><strong>Brand:</strong> {product.brand}</p>
+            <p><strong>Category:</strong> {product.category}</p>
             <p>
               <strong>Availability:</strong>{" "}
-              <span style={{ color: "#b7ff35" }}>
-                Available in Demo Store
-              </span>
+              {outOfStock ? "Out of Stock" : "Available in Demo Store"}
             </p>
           </div>
 
-          {/* Size Selection */}
           <div className="shoe-size-header">
             <h3>Select Size</h3>
-            <span>US Sizes</span>
+            <span>EU Sizes 36–46</span>
           </div>
 
           <div className="shoe-size-grid">
@@ -228,9 +248,7 @@ export default function ProductPage({
               <button
                 type="button"
                 key={size}
-                className={
-                  selectedSize === size ? "active" : ""
-                }
+                className={selectedSize === size ? "active" : ""}
                 onClick={() => {
                   setSelectedSize(size);
                   setNotification("");
@@ -242,62 +260,80 @@ export default function ProductPage({
             ))}
           </div>
 
-          {/* Quantity */}
-          <h3>Quantity</h3>
+          <h3>Select Color</h3>
+          <div className="shoe-color-grid">
+            {colors.map((color) => (
+              <button
+                type="button"
+                key={color}
+                className={selectedColor === color ? "active" : ""}
+                aria-pressed={selectedColor === color}
+                onClick={() => {
+                  setSelectedColor(color);
+                  setNotification("");
+                }}
+              >
+                {color}
+              </button>
+            ))}
+          </div>
 
+          <h3>Quantity</h3>
           <div className="shoe-quantity">
             <button
               type="button"
-              onClick={decreaseQuantity}
+              disabled={quantity <= 1}
+              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
               aria-label="Decrease quantity"
             >
               −
             </button>
-
             <span>{quantity}</span>
-
             <button
               type="button"
-              onClick={increaseQuantity}
+              disabled={quantity >= maxQuantity}
+              onClick={() =>
+                setQuantity((q) => Math.min(maxQuantity, q + 1))
+              }
               aria-label="Increase quantity"
             >
               +
             </button>
           </div>
 
-          {/* Notification */}
+          <p className="shoe-selection-summary">
+            {selectedSize ? `EU ${selectedSize}` : "No size selected"}
+            {" · "}
+            {selectedColor || "No color selected"}
+            {" · "}
+            {quantity} pair{quantity > 1 ? "s" : ""}
+          </p>
+
           {notification && (
-            <p
-              role="status"
-              style={{
-                color: "#b7ff35",
-                marginBottom: "15px",
-              }}
-            >
+            <p className="shoe-notification" role="status">
               {notification}
             </p>
           )}
 
-          {/* Action Buttons */}
           <div className="shoe-actions">
             <button
               type="button"
               className="shoe-cart-btn"
+              disabled={outOfStock}
               onClick={addToCart}
             >
               + Add to Cart
             </button>
-
             <button
               type="button"
               className="shoe-buy-btn"
+              disabled={outOfStock}
               onClick={buyNow}
             >
               Buy Now →
             </button>
           </div>
 
-          {/* Benefits */}
           <div className="shoe-benefits">
             <p>✓ Free shipping on orders over $150</p>
             <p>✓ 30-day demo returns</p>

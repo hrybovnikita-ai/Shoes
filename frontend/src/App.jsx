@@ -14,6 +14,10 @@ import ShoppingCart from "./components/ShoppingCart";
 
 import "./App.css";
 
+// ==========================================
+// DEMO PRODUCT CATALOG
+// ==========================================
+
 const products = [
   {
     id: 1,
@@ -95,6 +99,10 @@ const products = [
   },
 ];
 
+// ==========================================
+// CATEGORIES
+// ==========================================
+
 const categories = [
   {
     name: "Running",
@@ -116,6 +124,10 @@ const categories = [
   },
 ];
 
+// ==========================================
+// HELPERS
+// ==========================================
+
 const money = (value) =>
   `$${Number(value || 0).toFixed(2)}`;
 
@@ -127,6 +139,10 @@ function load(key, fallback) {
     return fallback;
   }
 }
+
+// ==========================================
+// PRODUCT CARD
+// ==========================================
 
 function ProductCard({
   product,
@@ -142,7 +158,11 @@ function ProductCard({
         role="button"
         tabIndex={0}
         onKeyDown={(event) => {
-          if (event.key === "Enter") {
+          if (
+            event.key === "Enter" ||
+            event.key === " "
+          ) {
+            event.preventDefault();
             onOpen(product);
           }
         }}
@@ -158,7 +178,10 @@ function ProductCard({
         </span>
 
         <button
-          className={`favorite ${favorite ? "active" : ""}`}
+          type="button"
+          className={`favorite ${
+            favorite ? "active" : ""
+          }`}
           onClick={(event) => {
             event.stopPropagation();
             onFavorite(product.id);
@@ -173,6 +196,7 @@ function ProductCard({
         </button>
 
         <button
+          type="button"
           className="quick-view"
           onClick={(event) => {
             event.stopPropagation();
@@ -206,12 +230,14 @@ function ProductCard({
         <div className="product-bottom">
           <div>
             <strong>{money(product.price)}</strong>{" "}
+
             {product.oldPrice != null && (
               <del>{money(product.oldPrice)}</del>
             )}
           </div>
 
           <button
+            type="button"
             className="add-btn"
             onClick={() => onOpen(product)}
           >
@@ -222,6 +248,10 @@ function ProductCard({
     </article>
   );
 }
+
+// ==========================================
+// FOOTER
+// ==========================================
 
 function Footer({ onCategory }) {
   const [email, setEmail] = useState("");
@@ -336,20 +366,32 @@ function Footer({ onCategory }) {
             All rights reserved.
           </span>
 
-          <span>Designed for the next step. ⚡</span>
+          <span>
+            Designed for the next step. ⚡
+          </span>
         </div>
       </div>
     </footer>
   );
 }
 
+// ==========================================
+// MAIN APP
+// ==========================================
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ========================================
+  // AUTHENTICATION
+  // ========================================
+
   const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [logoutError, setLogoutError] = useState("");
+  const [authLoading, setAuthLoading] =
+    useState(true);
+  const [logoutError, setLogoutError] =
+    useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -387,6 +429,10 @@ export default function App() {
     }
   }
 
+  // ========================================
+  // THEME
+  // ========================================
+
   const [theme, setTheme] = useState(() =>
     localStorage.getItem("shoes-theme") === "light"
       ? "light"
@@ -395,23 +441,55 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    localStorage.setItem("shoes-theme", theme);
+
+    localStorage.setItem(
+      "shoes-theme",
+      theme
+    );
   }, [theme]);
+
+  // ========================================
+  // SEARCH AND SORT
+  // ========================================
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("default");
 
+  // ========================================
+  // CART
+  // ========================================
+
   const [cart, setCart] = useState(() =>
-    load("shoes-cart-v2", load("shoes_cart", []))
+    load(
+      "shoes-cart-v2",
+      load("shoes_cart", [])
+    )
   );
+
+  const [cartOpen, setCartOpen] =
+    useState(false);
+
+  // ========================================
+  // FAVORITES
+  // ========================================
 
   const [favorites, setFavorites] = useState(() =>
     load("shoes-favorites-v2", [])
   );
 
-  const [cartOpen, setCartOpen] = useState(false);
-  const [mobileMenu, setMobileMenu] = useState(false);
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] =
+    useState(false);
+
+  // ========================================
+  // MOBILE MENU
+  // ========================================
+
+  const [mobileMenu, setMobileMenu] =
+    useState(false);
+
+  // ========================================
+  // ROUTING
+  // ========================================
 
   const path = location.pathname;
 
@@ -426,7 +504,8 @@ export default function App() {
     : "All";
 
   const authMode =
-    path === "/login" || path === "/register";
+    path === "/login" ||
+    path === "/register";
 
   const productPageOpen =
     path.startsWith("/product/");
@@ -460,7 +539,8 @@ export default function App() {
         });
     });
 
-    return () => cancelAnimationFrame(frame);
+    return () =>
+      cancelAnimationFrame(frame);
   }, [
     path,
     location.search,
@@ -479,9 +559,15 @@ export default function App() {
 
   function switchAuth(mode) {
     navigate(
-      mode === "register" ? "/register" : "/login"
+      mode === "register"
+        ? "/register"
+        : "/login"
     );
   }
+
+  // ========================================
+  // LOCAL STORAGE
+  // ========================================
 
   useEffect(() => {
     localStorage.setItem(
@@ -506,8 +592,15 @@ export default function App() {
     };
   }, [cartOpen]);
 
-  const [apiProducts, setApiProducts] = useState(null);
-  const [apiError, setApiError] = useState("");
+  // ========================================
+  // BACKEND PRODUCTS
+  // ========================================
+
+  const [apiProducts, setApiProducts] =
+    useState(null);
+
+  const [apiError, setApiError] =
+    useState("");
 
   useEffect(() => {
     let active = true;
@@ -522,7 +615,8 @@ export default function App() {
           setApiProducts(
             data.products.map((product) => ({
               ...products.find(
-                (local) => local.id === product.id
+                (local) =>
+                  local.id === product.id
               ),
               ...product,
             }))
@@ -545,28 +639,42 @@ export default function App() {
   const catalogProducts =
     apiProducts ?? products;
 
+  // ========================================
+  // FILTER PRODUCTS
+  // ========================================
+
   const filteredProducts = useMemo(() => {
     let result = catalogProducts.filter(
       (product) =>
-        (category === "All" ||
-          product.category === category) &&
-        (!favoritesOnly ||
-          favorites.includes(product.id)) &&
+        (
+          category === "All" ||
+          product.category === category
+        ) &&
+        (
+          !favoritesOnly ||
+          favorites.includes(product.id)
+        ) &&
         `${product.name} ${product.brand} ${product.category}`
           .toLowerCase()
           .includes(search.toLowerCase())
     );
 
     if (sort === "low") {
-      result.sort((a, b) => a.price - b.price);
+      result.sort(
+        (a, b) => a.price - b.price
+      );
     }
 
     if (sort === "high") {
-      result.sort((a, b) => b.price - a.price);
+      result.sort(
+        (a, b) => b.price - a.price
+      );
     }
 
     if (sort === "rating") {
-      result.sort((a, b) => b.rating - a.rating);
+      result.sort(
+        (a, b) => b.rating - a.rating
+      );
     }
 
     return result;
@@ -579,11 +687,20 @@ export default function App() {
     favorites,
   ]);
 
+  // ========================================
+  // CART COUNT
+  // ========================================
+
   const cartCount = cart.reduce(
     (total, product) =>
-      total + (Number(product.quantity) || 1),
+      total +
+      (Number(product.quantity) || 1),
     0
   );
+
+  // ========================================
+  // CATEGORY NAVIGATION
+  // ========================================
 
   function chooseCategory(value) {
     setFavoritesOnly(false);
@@ -591,7 +708,9 @@ export default function App() {
     go(
       value === "All"
         ? "/shop"
-        : `/shop?category=${encodeURIComponent(value)}`
+        : `/shop?category=${encodeURIComponent(
+            value
+          )}`
     );
 
     requestAnimationFrame(() => {
@@ -604,8 +723,13 @@ export default function App() {
     });
   }
 
+  // ========================================
+  // ADD TO CART
+  // ========================================
+
   function addToCart(product, sizeArg) {
-    const size = sizeArg ?? product.size;
+    const size =
+      sizeArg ?? product.size;
 
     const quantity = Math.max(
       1,
@@ -643,6 +767,10 @@ export default function App() {
     setCartOpen(true);
   }
 
+  // ========================================
+  // FAVORITES ACTIONS
+  // ========================================
+
   function toggleFavorite(id) {
     setFavorites((current) =>
       current.includes(id)
@@ -653,17 +781,33 @@ export default function App() {
     );
   }
 
-  // Authentication pages
+  // ========================================
+  // AUTH PAGES
+  // ========================================
+
   if (authMode) {
     return <AuthPage />;
   }
 
-  // My Account page
+  // ========================================
+  // MY ACCOUNT + FAVORITES
+  // ========================================
+
   if (path === "/account") {
-    return <AccountPage />;
+    return (
+      <AccountPage
+        favorites={favorites}
+        products={catalogProducts}
+        onToggleFavorite={toggleFavorite}
+        onOpenProduct={openProduct}
+      />
+    );
   }
 
-  // Product details
+  // ========================================
+  // PRODUCT DETAILS
+  // ========================================
+
   if (productPageOpen) {
     return (
       <ProductPage
@@ -674,12 +818,18 @@ export default function App() {
     );
   }
 
-  // Checkout
+  // ========================================
+  // CHECKOUT
+  // ========================================
+
   if (path === "/checkout") {
     return <CheckoutPage />;
   }
 
-  // Order success
+  // ========================================
+  // ORDER SUCCESS
+  // ========================================
+
   if (path === "/success") {
     return (
       <SuccessPage
@@ -688,14 +838,20 @@ export default function App() {
     );
   }
 
+  // ========================================
+  // MAIN STORE
+  // ========================================
+
   return (
     <div className="app">
+      {/* ANNOUNCEMENT */}
       <div className="announcement">
         FREE SHIPPING ON ORDERS OVER $150
         <span>✦</span>
         NEW COLLECTION AVAILABLE NOW
       </div>
 
+      {/* HEADER */}
       <header className="header">
         <nav className="nav container">
           <a
@@ -709,6 +865,7 @@ export default function App() {
             SHOES<span>.</span>
           </a>
 
+          {/* NAV LINKS */}
           <div
             className={`nav-links ${
               mobileMenu ? "open" : ""
@@ -755,8 +912,10 @@ export default function App() {
             </a>
           </div>
 
+          {/* ACTIONS */}
           <div className="nav-actions">
             <button
+              type="button"
               className="icon-btn search-trigger"
               onClick={() => {
                 setFavoritesOnly(false);
@@ -772,13 +931,20 @@ export default function App() {
               ⌕ <span>Search</span>
             </button>
 
+            {/* FAVORITES */}
             <button
+              type="button"
               className={`icon-btn ${
-                favoritesOnly ? "selected" : ""
+                favoritesOnly
+                  ? "selected"
+                  : ""
               }`}
               onClick={() => {
                 go("/shop");
-                setFavoritesOnly((value) => !value);
+
+                setFavoritesOnly(
+                  (value) => !value
+                );
 
                 requestAnimationFrame(() => {
                   document
@@ -793,14 +959,19 @@ export default function App() {
               ♡ <span>{favorites.length}</span>
             </button>
 
+            {/* CART */}
             <button
+              type="button"
               className="icon-btn"
-              onClick={() => setCartOpen(true)}
+              onClick={() =>
+                setCartOpen(true)
+              }
               aria-label="Open cart"
             >
               🛒 <span>{cartCount}</span>
             </button>
 
+            {/* USER ACCOUNT */}
             {authLoading ? (
               <span
                 className="account-btn"
@@ -834,7 +1005,8 @@ export default function App() {
                     height: 36,
                     borderRadius: "50%",
                     objectFit: "cover",
-                    border: "2px solid #b7ff35",
+                    border:
+                      "2px solid #b7ff35",
                   }}
                 />
 
@@ -855,7 +1027,9 @@ export default function App() {
                 <button
                   type="button"
                   className="account-btn"
-                  onClick={() => go("/account")}
+                  onClick={() =>
+                    go("/account")
+                  }
                 >
                   My Account
                 </button>
@@ -872,12 +1046,15 @@ export default function App() {
               <button
                 type="button"
                 className="account-btn"
-                onClick={() => switchAuth("login")}
+                onClick={() =>
+                  switchAuth("login")
+                }
               >
                 Sign In / Sign Up
               </button>
             )}
 
+            {/* THEME */}
             <button
               type="button"
               className="theme-toggle"
@@ -895,10 +1072,14 @@ export default function App() {
                 : "☾ Dark"}
             </button>
 
+            {/* MOBILE MENU */}
             <button
+              type="button"
               className="menu-btn"
               onClick={() =>
-                setMobileMenu(!mobileMenu)
+                setMobileMenu(
+                  !mobileMenu
+                )
               }
               aria-label="Toggle navigation"
             >
@@ -920,8 +1101,13 @@ export default function App() {
         </p>
       )}
 
+      {/* MAIN CONTENT */}
       <main className="container">
-        <section className="hero" id="home">
+        {/* HERO */}
+        <section
+          className="hero"
+          id="home"
+        >
           <div className="hero-content">
             <div className="eyebrow">
               THE NEW ERA OF FOOTWEAR
@@ -943,6 +1129,7 @@ export default function App() {
             </p>
 
             <button
+              type="button"
               className="primary"
               onClick={() =>
                 chooseCategory("All")
@@ -953,11 +1140,13 @@ export default function App() {
 
             <div className="hero-stats">
               <span>
-                <strong>06+</strong> Curated styles
+                <strong>06+</strong>{" "}
+                Curated styles
               </span>
 
               <span>
-                <strong>3</strong> Collections
+                <strong>3</strong>{" "}
+                Collections
               </span>
             </div>
           </div>
@@ -969,28 +1158,40 @@ export default function App() {
           />
         </section>
 
+        {/* BENEFITS */}
         <section
           className="benefits"
           id="features"
         >
           <div>
-            <strong>↗ Free Shipping</strong>
-            <small>On orders over $150</small>
+            <strong>
+              ↗ Free Shipping
+            </strong>
+            <small>
+              On orders over $150
+            </small>
           </div>
 
           <div>
-            <strong>⚡ Premium Quality</strong>
-            <small>Carefully selected footwear</small>
+            <strong>
+              ⚡ Premium Quality
+            </strong>
+            <small>
+              Carefully selected footwear
+            </small>
           </div>
 
           <div>
-            <strong>↩ Easy Returns</strong>
+            <strong>
+              ↩ Easy Returns
+            </strong>
             <small>
               30-day return policy (demo)
             </small>
           </div>
         </section>
 
+        {/* CATEGORIES */}
         <section
           className="section"
           id="categories"
@@ -1001,7 +1202,9 @@ export default function App() {
                 FIND YOUR STYLE
               </div>
 
-              <h2>Shop by Category</h2>
+              <h2>
+                Shop by Category
+              </h2>
 
               <p className="muted">
                 The right pair for every moment.
@@ -1009,6 +1212,7 @@ export default function App() {
             </div>
 
             <button
+              type="button"
               className="text-link"
               onClick={() =>
                 chooseCategory("All")
@@ -1021,10 +1225,13 @@ export default function App() {
           <div className="category-grid">
             {categories.map((item) => (
               <button
+                type="button"
                 key={item.name}
                 className="category-card"
                 onClick={() =>
-                  chooseCategory(item.name)
+                  chooseCategory(
+                    item.name
+                  )
                 }
               >
                 <img
@@ -1034,8 +1241,13 @@ export default function App() {
                 />
 
                 <span className="category-overlay">
-                  <strong>{item.name}</strong>
-                  <small>{item.subtitle}</small>
+                  <strong>
+                    {item.name}
+                  </strong>
+
+                  <small>
+                    {item.subtitle}
+                  </small>
                 </span>
 
                 <span className="category-arrow">
@@ -1046,6 +1258,7 @@ export default function App() {
           </div>
         </section>
 
+        {/* SHOP */}
         <section
           className="section"
           id="shop"
@@ -1076,12 +1289,15 @@ export default function App() {
                 placeholder="Search sneakers..."
                 value={search}
                 onChange={(event) =>
-                  setSearch(event.target.value)
+                  setSearch(
+                    event.target.value
+                  )
                 }
               />
             </label>
           </div>
 
+          {/* FILTERS */}
           <div className="filter-bar">
             <div className="filters">
               {[
@@ -1091,6 +1307,7 @@ export default function App() {
                 ),
               ].map((item) => (
                 <button
+                  type="button"
                   key={item}
                   className={`filter ${
                     category === item &&
@@ -1116,18 +1333,23 @@ export default function App() {
                 aria-label="Sort products"
                 value={sort}
                 onChange={(event) =>
-                  setSort(event.target.value)
+                  setSort(
+                    event.target.value
+                  )
                 }
               >
                 <option value="default">
                   Featured
                 </option>
+
                 <option value="low">
                   Price: Low to High
                 </option>
+
                 <option value="high">
                   Price: High to Low
                 </option>
+
                 <option value="rating">
                   Top Rated
                 </option>
@@ -1135,6 +1357,7 @@ export default function App() {
             </div>
           </div>
 
+          {/* API ERROR */}
           {apiError && (
             <p
               role="status"
@@ -1145,24 +1368,34 @@ export default function App() {
             </p>
           )}
 
+          {/* PRODUCT GRID */}
           <div className="product-grid">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                favorite={favorites.includes(
-                  product.id
-                )}
-                onFavorite={toggleFavorite}
-                onOpen={openProduct}
-              />
-            ))}
+            {filteredProducts.map(
+              (product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  favorite={favorites.includes(
+                    product.id
+                  )}
+                  onFavorite={
+                    toggleFavorite
+                  }
+                  onOpen={
+                    openProduct
+                  }
+                />
+              )
+            )}
           </div>
 
+          {/* EMPTY PRODUCTS */}
           {!filteredProducts.length && (
             <div className="empty">
               No products found.{" "}
+
               <button
+                type="button"
                 onClick={() => {
                   setSearch("");
                   chooseCategory("All");
@@ -1174,6 +1407,7 @@ export default function App() {
           )}
         </section>
 
+        {/* PROMO */}
         <section className="promo">
           <div className="eyebrow">
             YOUR STYLE. YOUR RULES.
@@ -1186,11 +1420,12 @@ export default function App() {
           </h2>
 
           <p>
-            Explore the collection and find
-            your next everyday essential.
+            Explore the collection and
+            find your next everyday essential.
           </p>
 
           <button
+            type="button"
             className="primary"
             onClick={() =>
               chooseCategory("All")
@@ -1201,8 +1436,14 @@ export default function App() {
         </section>
       </main>
 
-      <Footer onCategory={chooseCategory} />
+      {/* FOOTER */}
+      <Footer
+        onCategory={
+          chooseCategory
+        }
+      />
 
+      {/* SHOPPING CART */}
       <ShoppingCart
         isOpen={cartOpen}
         onClose={() =>

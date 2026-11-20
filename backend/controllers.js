@@ -11,6 +11,11 @@ require("./firebaseAdmin");
 // HELPERS
 // ==========================================
 
+const PROMO_CODES = Object.freeze({
+  SHOES10: 0.10,
+  WELCOME15: 0.15,
+});
+
 const money = (n) =>
   Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -189,7 +194,24 @@ const createOrder = wrap(async (req, res) => {
   if (!authResult) return;
 
   const firebaseUser = authResult.user;
-  const { customer, items } = req.body || {};
+  const {
+    customer,
+    items,
+    promoCode: rawPromoCode = "",
+  } = req.body || {};
+
+  const promoCode =
+    typeof rawPromoCode === "string"
+      ? rawPromoCode.trim().toUpperCase()
+      : null;
+
+  if (
+    promoCode === null ||
+    (promoCode &&
+      !Object.hasOwn(PROMO_CODES, promoCode))
+  ) {
+    return fail(res, 400, "Invalid promo code");
+  }
 
   if (
     !customer ||
@@ -319,8 +341,15 @@ const createOrder = wrap(async (req, res) => {
       )
     );
 
-    const shipping = subtotal >= 150 ? 0 : 12;
-    const total = money(subtotal + shipping);
+    const discount = money(
+      subtotal * (PROMO_CODES[promoCode] || 0)
+    );
+
+    const shipping = subtotal >= 150 ? 0 : 10;
+
+    const total = money(
+      Math.max(0, subtotal - discount + shipping)
+    );
 
     const id = `SH-${crypto.randomUUID()}`;
 
@@ -417,7 +446,11 @@ const createOrder = wrap(async (req, res) => {
     return res.status(201).json({
       success: true,
       message: "Demo order created successfully",
-      order: savedOrder,
+      order: {
+        ...savedOrder,
+        discount,
+        promoCode,
+      },
       receiptToken,
       emailStatus,
     });
@@ -537,7 +570,12 @@ const cancelOrder = wrap(async (req, res) => {
 
     const quantities = new Map();
 
-    for (const item of order.items) {
+    const storedItems =
+      typeof order.items === "string"
+        ? JSON.parse(order.items)
+        : order.items;
+
+    for (const item of storedItems) {
       quantities.set(
         item.id,
         (quantities.get(item.id) || 0) +

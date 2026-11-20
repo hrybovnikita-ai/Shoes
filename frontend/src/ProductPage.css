@@ -216,3 +216,101 @@
     flex-direction: column;
   }
 }
+
+
+/* SHOES 2.0 - Product Details */
+
+.shoe-color-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 25px;
+}
+
+.shoe-color-grid button {
+  padding: 12px 18px;
+  border: 1px solid #333;
+  border-radius: 10px;
+  background: #171717;
+  color: #fff;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.shoe-color-grid button:hover,
+.shoe-color-grid button.active {
+  border-color: #b7ff35;
+  background: #253310;
+  color: #b7ff35;
+}
+
+.shoe-gallery-controls {
+  position: absolute;
+  bottom: 18px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.shoe-gallery-controls button {
+  pointer-events: auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #444;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.shoe-gallery-controls button:hover {
+  background: #b7ff35;
+  color: #000;
+}
+
+.shoe-main-image {
+  position: relative;
+}
+
+.shoe-discount-badge {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #b7ff35;
+  color: #080808;
+  font-weight: 800;
+}
+
+.shoe-selection-summary {
+  margin: 16px 0;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.shoe-notification {
+  margin: 15px 0;
+  color: #b7ff35;
+  font-weight: 600;
+}
+
+.shoe-quantity button:disabled,
+.shoe-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .shoe-color-grid button {
+    padding: 10px 14px;
+  }
+
+  .shoe-gallery-controls button {
+    width: 36px;
+    height: 36px;
+  }
+}
