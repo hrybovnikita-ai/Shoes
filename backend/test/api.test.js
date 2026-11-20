@@ -264,3 +264,11 @@ test("rate limiter returns 429 after the window budget", async () => {
   assert.equal(passed, 2);
   assert.equal(res.code, 429);
 });
+
+test("newsletter stores e-mails once, validates input", async () => {
+  assert.equal((await api(base, "POST", "/newsletter", { body: { email: "bad" } })).status, 400);
+  assert.equal((await api(base, "POST", "/newsletter", { body: { email: "News@Example.test" } })).status, 201);
+  assert.equal((await api(base, "POST", "/newsletter", { body: { email: "news@example.test" } })).status, 201);
+  const n = await pool.query("SELECT COUNT(*)::int n FROM shoes_newsletter_subscribers");
+  assert.equal(n.rows[0].n, 1);
+});

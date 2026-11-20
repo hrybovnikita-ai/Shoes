@@ -32,7 +32,7 @@ test("migrations upgrade a legacy database without losing data", async () => {
   await ins("SH-guest-1", null, "guest@example.com");
 
   const applied = await migrate(pool);
-  assert.equal(applied.length, 4);
+  assert.equal(applied.length, 5);
 
   const orders = (await pool.query("SELECT * FROM shoes_orders ORDER BY id")).rows;
   assert.equal(orders.length, 4, "no order lost");
@@ -58,7 +58,7 @@ test("migrations upgrade a legacy database without losing data", async () => {
 test("dry-run changes nothing", async () => {
   await pool.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   const names = await migrate(pool, { dryRun: true });
-  assert.equal(names.length, 4);
+  assert.equal(names.length, 5);
   const t = await pool.query("SELECT to_regclass('shoes_orders') AS t");
   assert.equal(t.rows[0].t, null);
 });

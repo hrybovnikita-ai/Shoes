@@ -43,6 +43,9 @@ router.post("/me/link-identity", writeLimit, requireAuth, c.linkIdentity);
 router.post("/me/orders/claim/request", claimLimit, requireAuth, c.requestClaim);
 router.post("/me/orders/claim/confirm", claimLimit, requireAuth, c.confirmClaim);
 
+// Newsletter
+router.post("/newsletter", writeLimit, c.subscribeNewsletter);
+
 // Store statistics
 router.get("/stats", readLimit, c.getStats);
 

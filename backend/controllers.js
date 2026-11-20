@@ -96,6 +96,7 @@ const index = (req, res) =>
       "POST /api/me/orders/claim/request (auth)",
       "POST /api/me/orders/claim/confirm (auth)",
       "POST /api/payments/stripe/webhook",
+      "POST /api/newsletter",
       "GET /api/stats",
     ],
   });
@@ -920,6 +921,21 @@ const stripeWebhook = wrap(async (req, res) => {
 });
 
 // ==========================================
+// NEWSLETTER
+// ==========================================
+
+const subscribeNewsletter = wrap(async (req, res) => {
+  const addr = str(req.body?.email).toLowerCase();
+  if (!validEmail(addr)) return fail(res, 400, "Enter a valid email address");
+  await pool.query(
+    "INSERT INTO shoes_newsletter_subscribers (email) VALUES ($1) ON CONFLICT ((lower(email))) DO NOTHING",
+    [addr]
+  );
+  // Same answer whether or not the address was already subscribed.
+  res.status(201).json({ success: true, message: "Thanks! You're on the SHOES list." });
+});
+
+// ==========================================
 // STATS
 // ==========================================
 
@@ -971,6 +987,7 @@ module.exports = {
   requestClaim,
   confirmClaim,
   stripeWebhook,
+  subscribeNewsletter,
   getStats,
   // exported for tests
   _internal: { priceCart, parseCustomer, ownsOrder, releaseOrder, OrderInputError },
