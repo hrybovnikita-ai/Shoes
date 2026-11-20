@@ -369,7 +369,12 @@ export default function AccountPage({ products = [], favorites = [], onToggleFav
             ["security", "Security"],
             ["preferences", "Preferences"],
           ].map(([id, label]) => (
-            <a key={id} href={`#${id}`} onClick={(e) => { e.preventDefault(); navigate(`/account#${id}`, { replace: true }); }}>
+            <a
+              key={id}
+              href={`#${id}`}
+              aria-current={(location.hash.slice(1) || "overview") === id ? "true" : undefined}
+              onClick={(e) => { e.preventDefault(); navigate(`/account#${id}`, { replace: true }); }}
+            >
               {label}
             </a>
           ))}

@@ -14,6 +14,7 @@ import HomePage from "./pages/HomePage";
 
 import "./App.css";
 import "./styles/upgrade.css";
+import "./styles/glass.css";
 
 const ProductPage = lazy(() => import("./ProductPage"));
 const CheckoutPage = lazy(() => import("./CheckoutPage"));

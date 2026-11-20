@@ -39,3 +39,16 @@ A GitHub Actions workflow is ready at `docs/ci/ci.yml` (backend tests on a Postg
 service + frontend lint/build). It is not in `.github/workflows/` because the token
 used to push this branch lacks the `workflow` scope. To enable it:
 `mkdir -p .github/workflows && git mv docs/ci/ci.yml .github/workflows/ci.yml`, commit, push.
+
+## Visual QA screenshots (glass redesign)
+
+With the same local stack as the e2e suite running (preview on :4173, local backend, Firebase Auth emulator):
+
+```bash
+cd e2e && node glass-shots.mjs
+```
+
+Writes `shoes-glass-*.png` (390 / 768 / 1440) to `$E2E_SHOTS_DIR` (default `/workspace/shots`): home, catalog, product,
+login, account (overview / orders / favorites), cart drawer, checkout, mobile nav, account dropdown, a
+`prefers-reduced-transparency: reduce` fallback and the light theme. It also reports horizontal overflow at 390px and
+console errors. It is paced to stay under the local backend's read rate limit. It refuses to run against anything other than localhost.
