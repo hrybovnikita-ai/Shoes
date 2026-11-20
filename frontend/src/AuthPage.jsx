@@ -5,6 +5,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail,
   sendEmailVerification,
   updateProfile,
@@ -72,15 +74,26 @@ function GoogleIcon() {
 function getErrorMessage(error) {
   const messages = {
     "auth/email-already-in-use":
-      "This email is already registered. Try signing in.",
+      "This email is already registered. Sign in instead — or, if you registered with Google, use Continue with Google.",
     "auth/invalid-email":
       "Please enter a valid email address.",
     "auth/weak-password":
       "Your password is too weak. Use at least 8 characters.",
+    // Firebase returns this one code for a wrong password, an e-mail with no
+    // account in this project, AND a Google-only account (email-enumeration
+    // protection hides which), so offer every way forward.
     "auth/invalid-credential":
-      "Incorrect email or password. If you registered with Google, use Continue with Google.",
+      "We couldn't sign you in with that email and password. Check the password, or — if you created your account with Google — use Continue with Google. You can also reset your password below.",
+    "auth/invalid-login-credentials":
+      "We couldn't sign you in with that email and password. Check the password, or — if you created your account with Google — use Continue with Google. You can also reset your password below.",
     "auth/wrong-password":
-      "Incorrect password. Please try again.",
+      "Incorrect password. Try again, reset your password, or use Continue with Google if that's how you signed up.",
+    "auth/missing-password":
+      "Please enter your password.",
+    "auth/internal-error":
+      "Sign-in failed because of a temporary problem. Please try again.",
+    "auth/web-storage-unsupported":
+      "Your browser blocks storage needed for sign-in. Enable cookies/storage for this site and try again.",
     "auth/user-not-found":
       "No account found with this email. Try signing up.",
     "auth/user-disabled":
@@ -96,11 +109,11 @@ function getErrorMessage(error) {
     "auth/cancelled-popup-request":
       "Google sign-in was interrupted. Try again.",
     "auth/unauthorized-domain":
-      "This domain is not authorized in Firebase.",
+      "Sign-in is not enabled for this web address yet. Please use the main SHOES site.",
     "auth/operation-not-allowed":
       "This sign-in method is not enabled in Firebase.",
     "auth/invalid-api-key":
-      "Firebase API key is invalid. Check firebase.js.",
+      "Sign-in is misconfigured on this site. Please try again later.",
     "auth/configuration-not-found":
       "Firebase Authentication is not configured correctly.",
     "auth/account-exists-with-different-credential":
@@ -133,7 +146,13 @@ function FirebaseAuthForm() {
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [errorCode, setErrorCode] = useState("");
   const [notice, setNotice] = useState("");
+
+  function showError(err) {
+    setErrorCode(err?.code || "");
+    setError(getErrorMessage(err));
+  }
 
   const from = location.state?.from;
   const destination =
@@ -144,6 +163,21 @@ function FirebaseAuthForm() {
       ? `${from.pathname}${from.search || ""}${from.hash || ""}`
       : "/account";
 
+  // Surfaces errors from a Google sign-in that fell back to a full-page
+  // redirect (success is handled by the auth state listener).
+  useEffect(() => {
+    if (!firebaseEnabled || !auth) return undefined;
+    let active = true;
+    getRedirectResult(auth).catch((err) => {
+      if (!active) return;
+      console.error("SHOES Google redirect:", err.code);
+      showError(err);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   function change(event) {
     const { name, value } = event.target;
 
@@ -153,11 +187,13 @@ function FirebaseAuthForm() {
     }));
 
     setError("");
+    setErrorCode("");
     setNotice("");
   }
 
   function switchTo(next) {
     setError("");
+    setErrorCode("");
     setNotice("");
     setShowPassword(false);
     setShowConfirm(false);
@@ -182,6 +218,7 @@ function FirebaseAuthForm() {
     if (loading) return;
 
     setError("");
+    setErrorCode("");
     setNotice("");
 
     const email = form.email.trim().toLowerCase();
@@ -251,8 +288,8 @@ function FirebaseAuthForm() {
 
       navigate(destination, { replace: true });
     } catch (err) {
-      console.error("SHOES Firebase Auth:", err.code, err.message);
-      setError(getErrorMessage(err));
+      console.error("SHOES Firebase Auth:", err.code);
+      showError(err);
     } finally {
       setLoading(false);
     }
@@ -263,29 +300,27 @@ function FirebaseAuthForm() {
 
     setLoading(true);
     setError("");
+    setErrorCode("");
     setNotice("");
 
     try {
       await configurePersistence();
-
-      await signInWithPopup(
-        auth,
-        googleProvider
-      );
-
+      await signInWithPopup(auth, googleProvider);
       navigate(destination, { replace: true });
     } catch (err) {
-      console.error(
-        "SHOES Google Auth:",
-        err.code,
-        err.message
-      );
-
-      if (
-        err.code !== "auth/popup-closed-by-user" &&
-        err.code !== "auth/cancelled-popup-request"
-      ) {
-        setError(getErrorMessage(err));
+      // Popups are blocked in some browsers / in-app webviews: fall back to a
+      // full-page redirect.
+      if (err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (redirectError) {
+          console.error("SHOES Google redirect:", redirectError.code);
+          showError(redirectError);
+        }
+      } else if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
+        console.error("SHOES Google Auth:", err.code);
+        showError(err);
       }
     } finally {
       setLoading(false);
@@ -296,6 +331,7 @@ function FirebaseAuthForm() {
     if (loading) return;
 
     setError("");
+    setErrorCode("");
     setNotice("");
 
     const email = form.email.trim().toLowerCase();
@@ -314,11 +350,7 @@ function FirebaseAuthForm() {
         "If this email has a password account, a reset email will be sent. Check your inbox and spam folder."
       );
     } catch (err) {
-      console.error(
-        "SHOES Password Reset:",
-        err.code,
-        err.message
-      );
+      console.error("SHOES Password Reset:", err.code);
 
       if (
         err.code === "auth/user-not-found" ||
@@ -328,7 +360,7 @@ function FirebaseAuthForm() {
           "If this email has a password account, a reset email will be sent."
         );
       } else {
-        setError(getErrorMessage(err));
+        showError(err);
       }
     } finally {
       setLoading(false);
@@ -536,9 +568,26 @@ function FirebaseAuthForm() {
             )}
 
             {error && (
-              <p className="auth-error" role="alert">
-                {error}
-              </p>
+              <div className="auth-error" role="alert" data-testid="auth-error">
+                <p>{error}</p>
+                {["auth/invalid-credential", "auth/invalid-login-credentials", "auth/wrong-password", "auth/user-not-found", "auth/email-already-in-use"].includes(errorCode) && (
+                  <div className="auth-error-actions">
+                    {!register && (
+                      <button type="button" className="auth-link" onClick={resetPassword} disabled={loading}>
+                        Reset password
+                      </button>
+                    )}
+                    <button type="button" className="auth-link" onClick={loginWithGoogle} disabled={loading}>
+                      Continue with Google
+                    </button>
+                    {register && (
+                      <button type="button" className="auth-link" onClick={() => switchTo("login")} disabled={loading}>
+                        Sign in instead
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             {notice && (

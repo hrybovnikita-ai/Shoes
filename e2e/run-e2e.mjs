@@ -112,6 +112,13 @@ await step("register via Firebase emulator", async () => {
   await page.waitForURL((u) => !/\/register/.test(u.pathname), { timeout: 15000 });
 });
 
+await step("session survives a full reload", async () => {
+  await page.reload();
+  await page.goto(BASE + "/account");
+  await page.waitForTimeout(500);
+  assert(!/\/login/.test(page.url()), "redirected to login after reload");
+});
+
 await step("favorite a product, shows on account", async () => {
   await page.goto(BASE + "/product/2");
   await page.getByRole("button", { name: "Add to favorites" }).click();
@@ -150,6 +157,18 @@ await step("logout", async () => {
   await page.waitForURL(/\/login/, { timeout: 8000 });
 });
 
+await step("wrong password shows reset / Google actions", async () => {
+  await page.goto(BASE + "/login?method=firebase");
+  await page.locator("#auth-email").fill(email);
+  await page.locator("#auth-password").fill("WrongPass!000");
+  await page.locator(".auth-submit").click();
+  const err = page.getByTestId("auth-error");
+  await err.waitFor();
+  await err.getByRole("button", { name: "Reset password" }).waitFor();
+  await err.getByRole("button", { name: "Continue with Google" }).waitFor();
+  await page.screenshot({ path: `${SHOTS}/shoes-auth-wrong-password-1440.png` });
+});
+
 await step("404 page", async () => {
   await page.goto(BASE + "/definitely-missing");
   await page.getByText(/not found|404/i).first().waitFor();
@@ -180,7 +199,7 @@ await step("responsive screenshots + no horizontal overflow", async () => {
 await browser.close();
 const failed = results.filter((r) => !r.ok);
 console.log(`\n${results.length - failed.length}/${results.length} e2e steps passed`);
-const realErrors = consoleErrors.filter((e) => !/favicon/.test(e));
+const realErrors = consoleErrors.filter((e) => !/favicon|SHOES Firebase Auth: auth\/(wrong-password|invalid-credential)|400 \(Bad Request\)/.test(e));
 console.log(`console errors: ${realErrors.length}`);
 realErrors.slice(0, 20).forEach((e) => console.log("  " + e));
 process.exit(failed.length ? 1 : 0);

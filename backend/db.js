@@ -2,8 +2,15 @@
 const { Pool } = require("pg");
 const { products } = require("./data");
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required (PostgreSQL/Neon)");
+// The pool is created lazily so a missing DATABASE_URL never crashes the API
+// at import time (on Vercel that surfaced as FUNCTION_INVOCATION_FAILED with no
+// CORS headers). Queries then fail with DB_NOT_CONFIGURED -> JSON 503.
+class DbNotConfiguredError extends Error {
+  constructor() {
+    super("DATABASE_URL is not configured");
+    this.code = "DB_NOT_CONFIGURED";
+    this.status = 503;
+  }
 }
 
 // Local databases (localhost / 127.0.0.1 / ?sslmode=disable) connect without
@@ -19,11 +26,28 @@ function sslConfig(url) {
   return { rejectUnauthorized: true };
 }
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: sslConfig(process.env.DATABASE_URL),
-  max: Number(process.env.PG_POOL_MAX) || 5,
-});
+let realPool = null;
+function getPool() {
+  if (realPool) return realPool;
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new DbNotConfiguredError();
+  realPool = new Pool({ connectionString: url, ssl: sslConfig(url), max: Number(process.env.PG_POOL_MAX) || 5 });
+  realPool.on("error", (err) => console.error("SHOES db pool error:", err.message));
+  return realPool;
+}
+
+const lazy = (fn) => (...args) => {
+  try {
+    return fn(...args);
+  } catch (err) {
+    return Promise.reject(err);
+  }
+};
+const pool = {
+  query: lazy((...args) => getPool().query(...args)),
+  connect: lazy(() => getPool().connect()),
+  end: () => (realPool ? realPool.end() : Promise.resolve()),
+};
 
 // Seeds the original demo catalog. ON CONFLICT DO NOTHING: never overwrites
 // existing product rows (prices / stock edited in the DB are preserved).
@@ -103,4 +127,6 @@ function orderRow(o) {
   };
 }
 
-module.exports = { pool, seedProducts, productRow, orderRow, parseItems, sslConfig, CANCELLABLE_STATUSES };
+module.exports = {
+  getPool,
+  DbNotConfiguredError, pool, seedProducts, productRow, orderRow, parseItems, sslConfig, CANCELLABLE_STATUSES };
