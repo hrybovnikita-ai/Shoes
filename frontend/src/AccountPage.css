@@ -288,3 +288,81 @@
     flex-shrink: 0;
   }
 }
+
+
+/* SHOES 2.0 — My Orders */
+
+.account-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.account-order-card {
+  padding: 18px;
+  background: #101010;
+  border: 1px solid #303030;
+  border-radius: 12px;
+}
+
+.account-order-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.account-order-top > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+
+.account-order-top strong {
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: 13px;
+}
+
+.account-order-top small {
+  color: #999;
+}
+
+.account-order-status {
+  display: inline-block;
+  padding: 7px 10px;
+  border: 1px solid #b7ff35;
+  border-radius: 7px;
+  color: #b7ff35;
+  background: #1d2910;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.account-order-details {
+  margin-top: 15px;
+  padding-top: 12px;
+  border-top: 1px solid #333;
+}
+
+.account-order-details .account-detail {
+  gap: 12px;
+}
+
+.account-order-details .account-detail span {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .account-order-card {
+    padding: 12px;
+  }
+
+  .account-order-top {
+    flex-direction: column;
+  }
+}

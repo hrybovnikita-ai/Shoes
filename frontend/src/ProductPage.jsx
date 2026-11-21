@@ -1,236 +1,341 @@
-
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { shoesAPI } from "./api";
+import { useAuth } from "./auth/AuthContext";
+import ProductCard from "./components/ProductCard";
+import { LinesSkeleton } from "./components/Skeleton";
+import { useToast } from "./components/Toast";
+import useDocumentMeta from "./hooks/useDocumentMeta";
+import { formatDate, imageSrcSet, money, SIZES, stockInfo } from "./lib/format";
 import "./ProductPage.css";
 
-export default function ProductPage({
-  products = [],
-  onAddToCart,
-}) {
-  const navigate = useNavigate();
-  const location = useLocation();
+import { KEYS } from "./lib/storage";
 
-  // Get product ID directly from URL: /product/1
-  const id = Number(location.pathname.split("/")[2]);
-
-  // Find product in catalog
-  const product = products.find(
-    (item) => Number(item.id) === id
+function Stars({ value }) {
+  const v = Math.round(Number(value) || 0);
+  return (
+    <span className="stars" aria-label={`${value} out of 5`}>
+      {"★★★★★".slice(0, v)}
+      <span className="stars-off">{"★★★★★".slice(v)}</span>
+    </span>
   );
+}
+
+function Reviews({ productId }) {
+  const { user, getToken } = useAuth();
+  const { notify } = useToast();
+  const [data, setData] = useState({ loading: true, reviews: [], average: null, count: 0, error: "" });
+  const [form, setForm] = useState({ rating: 5, title: "", body: "" });
+  const [saving, setSaving] = useState(false);
+
+  const load = () =>
+    shoesAPI
+      .getReviews(productId)
+      .then((r) => setData({ loading: false, reviews: r.reviews, average: r.average, count: r.count, error: "" }))
+      .catch((e) => setData((d) => ({ ...d, loading: false, error: e.message })));
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  async function submit(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const token = await getToken();
+      await shoesAPI.createReview(productId, { rating: Number(form.rating), title: form.title, body: form.body }, token);
+      setForm({ rating: 5, title: "", body: "" });
+      notify("Thanks! Your review was published.");
+      load();
+    } catch (err) {
+      notify(err.message, { type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="shoe-reviews" aria-labelledby="reviews-title">
+      <div className="shoe-section-head">
+        <h2 id="reviews-title">Customer Reviews</h2>
+        <span className="muted">
+          {data.count ? (
+            <>
+              <Stars value={data.average} /> {data.average} / 5 · {data.count} review{data.count === 1 ? "" : "s"}
+            </>
+          ) : (
+            "No reviews yet"
+          )}
+        </span>
+      </div>
+      <p className="muted small">Reviews are written by signed-in SHOES customers. “Verified purchase” means the reviewer has an order containing this product.</p>
+      {data.loading ? (
+        <LinesSkeleton lines={3} />
+      ) : data.error ? (
+        <p className="form-error">{data.error}</p>
+      ) : (
+        <ul className="review-list">
+          {data.reviews.map((r) => (
+            <li key={r.id} className="review">
+              <div>
+                <Stars value={r.rating} /> <strong>{r.title || "Review"}</strong>
+              </div>
+              <p>{r.body}</p>
+              <small className="muted">
+                {r.author} · {formatDate(r.createdAt)}
+                {r.verifiedPurchase ? " · ✓ Verified purchase" : ""}
+              </small>
+            </li>
+          ))}
+        </ul>
+      )}
+      {user ? (
+        <form className="review-form" onSubmit={submit}>
+          <h3>Write a review</h3>
+          <label>
+            Rating
+            <select value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })}>
+              {[5, 4, 3, 2, 1].map((n) => (
+                <option key={n} value={n}>
+                  {n} star{n > 1 ? "s" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Title (optional)
+            <input maxLength={100} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+          </label>
+          <label>
+            Your review
+            <textarea required minLength={10} maxLength={1000} rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+          </label>
+          <button type="submit" className="shoe-cart-btn" disabled={saving}>
+            {saving ? "Publishing…" : "Publish review"}
+          </button>
+        </form>
+      ) : (
+        <p className="muted">
+          <a href="/login">Sign in</a> to write a review.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorites = [], onFavorite, onOpen, onQuickView, recent = [] }) {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const product = products.find((item) => String(item.id) === String(id));
 
   const [selectedSize, setSelectedSize] = useState(null);
+  const [selectedColor, setSelectedColor] = useState(product?.color || "");
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
   const [notification, setNotification] = useState("");
+  const [related, setRelated] = useState([]);
 
-  // Product not found
+  useEffect(() => {
+    if (product) onViewed?.(product.id);
+  }, [product, onViewed]);
+
+  useEffect(() => {
+    if (!product?.fromApi) return undefined;
+    let active = true;
+    shoesAPI
+      .getRelated(product.id)
+      .then((r) => active && setRelated(r.products || []))
+      .catch(() => active && setRelated([]));
+    return () => {
+      active = false;
+    };
+  }, [product?.id, product?.fromApi]);
+
+  const relatedProducts = useMemo(() => {
+    const ids = related.length ? related.map((r) => r.id) : products.filter((p) => p.id !== product?.id && p.category === product?.category).map((p) => p.id);
+    return ids.map((rid) => products.find((p) => p.id === rid)).filter(Boolean).slice(0, 4);
+  }, [related, products, product]);
+
+  const recentProducts = recent.filter((r) => r !== product?.id).map((r) => products.find((p) => p.id === r)).filter(Boolean).slice(0, 4);
+
+  const stock = product?.fromApi ? Math.max(0, Number(product.stock) || 0) : null;
+  const info = stockInfo(stock);
+  const outOfStock = stock === 0;
+  const maxQuantity = Math.max(1, Math.min(10, stock ?? 10));
+
+  useDocumentMeta({
+    title: product ? `${product.name} — ${product.brand}` : loading ? "Loading" : "Product not found",
+    description: product
+      ? `${product.name} by ${product.brand}. ${product.category} sneaker in ${product.color}. ${money(product.price)} at SHOES.`
+      : undefined,
+    image: product?.image,
+    noindex: !product,
+    jsonLd: product
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: product.name,
+          brand: { "@type": "Brand", name: product.brand },
+          category: product.category,
+          color: product.color,
+          image: product.image,
+          sku: `SHOES-${String(product.id).padStart(4, "0")}`,
+          offers: {
+            "@type": "Offer",
+            priceCurrency: "USD",
+            price: Number(product.price).toFixed(2),
+            availability: outOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+          },
+          ...(product.reviewCount
+            ? { aggregateRating: { "@type": "AggregateRating", ratingValue: product.reviewAverage, reviewCount: product.reviewCount } }
+            : {}),
+        }
+      : null,
+  });
+
   if (!product) {
+    if (loading) {
+      return (
+        <main className="shoe-product-page" id="main-content">
+          <div className="shoe-product-layout">
+            <div className="skeleton skeleton-photo tall" />
+            <LinesSkeleton lines={6} />
+          </div>
+        </main>
+      );
+    }
     return (
-      <main className="shoe-not-found">
+      <main className="shoe-not-found" id="main-content">
         <h1>Product Not Found</h1>
-        <p>
-          The product you are looking for does not exist.
-        </p>
-
-        <button
-          type="button"
-          onClick={() => navigate("/shop")}
-        >
+        <p>The product you are looking for does not exist.</p>
+        <button type="button" onClick={() => navigate("/shop")}>
           Back to Shop →
         </button>
       </main>
     );
   }
 
-  // Product gallery
-  const images = [
-    product.image,
-    ...(product.images || []),
-  ].filter(
-    (image, index, array) =>
-      image && array.indexOf(image) === index
-  );
+  const images = [product.image, ...(Array.isArray(product.images) ? product.images : [])].filter((img, i, arr) => img && arr.indexOf(img) === i);
+  const colors = Array.isArray(product.colors) && product.colors.length ? product.colors : [product.color].filter(Boolean);
+  const price = Number(product.price) || 0;
+  const oldPrice = Number(product.oldPrice) || 0;
+  const discount = oldPrice > price && price > 0 ? Math.round(((oldPrice - price) / oldPrice) * 100) : 0;
+  const favorite = favorites.includes(product.id);
 
-  // Available shoe sizes
-  const sizes = [
-    7, 8, 8.5, 9, 9.5, 10, 11, 12,
-  ];
-
-  const increaseQuantity = () => {
-    setQuantity((current) => Math.min(10, current + 1));
+  const createCartItem = () => {
+    if (outOfStock) return setNotification("This product is out of stock."), null;
+    if (selectedSize === null) return setNotification("Please select your EU shoe size."), null;
+    const color = selectedColor || colors[0];
+    if (!color) return setNotification("Please select a color."), null;
+    setNotification("");
+    return { size: selectedSize, color, quantity };
   };
 
-  const decreaseQuantity = () => {
-    setQuantity((current) => Math.max(1, current - 1));
-  };
-
-  // Add product to cart
   const addToCart = () => {
-    if (selectedSize === null) {
-      setNotification("Please select your shoe size.");
-      return;
-    }
-
-    onAddToCart?.({
-      ...product,
-      size: selectedSize,
-      quantity,
-    });
-
-    setNotification("Product added to cart successfully!");
+    const opts = createCartItem();
+    if (opts) onAddToCart(product, opts);
   };
 
-  // Redirect to demo checkout
   const buyNow = () => {
-    if (selectedSize === null) {
-      setNotification("Please select your shoe size.");
-      return;
+    const opts = createCartItem();
+    if (!opts) return;
+    const line = { id: product.id, name: product.name, brand: product.brand, image: product.image, price: product.price, ...opts };
+    try {
+      sessionStorage.setItem(KEYS.buyNow, JSON.stringify([line]));
+    } catch {
+      /* ignore */
     }
-
-    const selectedProduct = {
-      ...product,
-      size: selectedSize,
-      quantity,
-    };
-
-    navigate("/checkout", {
-      state: {
-        product: selectedProduct,
-        items: [selectedProduct],
-      },
-    });
+    navigate("/checkout?mode=buy-now");
   };
+
+  const cardProps = (p) => ({ favorite: favorites.includes(p.id), onFavorite, onOpen, onQuickView });
 
   return (
-    <main className="shoe-product-page">
-      {/* Breadcrumb */}
-      <div className="shoe-breadcrumb">
-        <button
-          type="button"
-          onClick={() => navigate("/shop")}
-        >
-          ← Back to Shop
+    <main className="shoe-product-page" id="main-content">
+      <nav className="shoe-breadcrumb" aria-label="Breadcrumb">
+        <button type="button" onClick={() => navigate("/shop")}>
+          ← Shop
         </button>
-
-        <span> / {product.name}</span>
-      </div>
+        <span> / </span>
+        <button type="button" onClick={() => navigate(`/shop?category=${encodeURIComponent(product.category)}`)}>
+          {product.category}
+        </button>
+        <span aria-current="page"> / {product.name}</span>
+      </nav>
 
       <div className="shoe-product-layout">
-        {/* Product Gallery */}
-        <section className="shoe-gallery">
+        <section className="shoe-gallery" aria-label="Product images">
           <div className="shoe-main-image">
             <img
-              src={images[activeImage] || product.image}
-              alt={product.name}
+              src={images[activeImage] || images[0]}
+              srcSet={imageSrcSet(images[activeImage] || images[0])}
+              sizes="(max-width: 900px) 100vw, 50vw"
+              alt={`${product.name} — image ${activeImage + 1} of ${images.length}`}
+              width="900"
+              height="900"
             />
-
-            {product.badge && (
-              <span className="shoe-product-badge">
-                {product.badge}
-              </span>
+            {product.badge && <span className="shoe-product-badge">{product.badge}</span>}
+            {discount > 0 && <span className="shoe-discount-badge">-{discount}%</span>}
+            {images.length > 1 && (
+              <div className="shoe-gallery-controls">
+                <button type="button" onClick={() => setActiveImage((c) => (c - 1 + images.length) % images.length)} aria-label="Previous image">
+                  ←
+                </button>
+                <button type="button" onClick={() => setActiveImage((c) => (c + 1) % images.length)} aria-label="Next image">
+                  →
+                </button>
+              </div>
             )}
           </div>
-
-          {/* Thumbnails */}
-          <div className="shoe-thumbnails">
-            {images.map((image, index) => (
-              <button
-                type="button"
-                key={`${image}-${index}`}
-                className={
-                  activeImage === index ? "selected" : ""
-                }
-                onClick={() => setActiveImage(index)}
-                aria-label={`View image ${index + 1}`}
-              >
-                <img
-                  src={image}
-                  alt={`${product.name} view ${index + 1}`}
-                  loading="lazy"
-                />
-              </button>
-            ))}
-          </div>
-
-          <p className="shoe-gallery-caption">
-            {images.length} product image
-            {images.length !== 1 ? "s" : ""} available
-          </p>
+          {images.length > 1 && (
+            <div className="shoe-thumbnails">
+              {images.map((image, index) => (
+                <button
+                  type="button"
+                  key={image}
+                  className={activeImage === index ? "selected" : ""}
+                  onClick={() => setActiveImage(index)}
+                  aria-label={`View image ${index + 1}`}
+                  aria-pressed={activeImage === index}
+                >
+                  <img src={image} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* Product Information */}
         <section className="shoe-product-info">
           <span className="shoe-label">
-            PREMIUM FOOTWEAR
+            {product.brand} · {product.category}
           </span>
-
           <h1>{product.name}</h1>
-
-          <p className="shoe-brand">
-            {product.brand || "Nike"} / {product.category}
-          </p>
-
-          {/* Rating */}
           <div className="shoe-rating">
-            <span>★ {product.rating || "4.8"}</span>
-            <span>Premium Selection</span>
+            {product.rating != null && <span title="Store rating">★ {product.rating} store rating</span>}
+            <a href="#reviews-title">
+              {product.reviewCount ? `${product.reviewCount} customer review${product.reviewCount === 1 ? "" : "s"}` : "No customer reviews yet"}
+            </a>
           </div>
-
-          {/* Price */}
           <div className="shoe-price">
-            <strong>
-              ${Number(product.price).toFixed(2)}
-            </strong>
-
-            {product.oldPrice && (
-              <del>
-                ${Number(product.oldPrice).toFixed(2)}
-              </del>
-            )}
+            <strong>{money(price)}</strong>
+            {oldPrice > price && <del>{money(oldPrice)}</del>}
+            {discount > 0 && <span className="save-chip">Save {money(oldPrice - price)}</span>}
           </div>
-
-          {/* Description */}
-          <p className="shoe-description">
-            {product.description ||
-              "Discover exceptional comfort, modern design, and everyday performance. Built for your next move. Premium materials and a timeless silhouette make this pair a perfect addition to your collection."}
+          <p className={`stock-pill stock-${info.tone}`} data-testid="stock">
+            {info.label}
           </p>
 
-          {/* Product Details */}
-          <div className="shoe-extra-info">
-            <p>
-              <strong>Brand:</strong> {product.brand}
-            </p>
-
-            <p>
-              <strong>Category:</strong> {product.category}
-            </p>
-
-            <p>
-              <strong>Color:</strong> {product.color}
-            </p>
-
-            <p>
-              <strong>Availability:</strong>{" "}
-              <span style={{ color: "#b7ff35" }}>
-                Available in Demo Store
-              </span>
-            </p>
-          </div>
-
-          {/* Size Selection */}
           <div className="shoe-size-header">
-            <h3>Select Size</h3>
-            <span>US Sizes</span>
+            <h2 className="h3">Select Size</h2>
+            <span>EU 36–46</span>
           </div>
-
-          <div className="shoe-size-grid">
-            {sizes.map((size) => (
+          <div className="shoe-size-grid" role="group" aria-label="EU size">
+            {SIZES.map((size) => (
               <button
                 type="button"
                 key={size}
-                className={
-                  selectedSize === size ? "active" : ""
-                }
+                className={selectedSize === size ? "active" : ""}
                 onClick={() => {
                   setSelectedSize(size);
                   setNotification("");
@@ -242,70 +347,130 @@ export default function ProductPage({
             ))}
           </div>
 
-          {/* Quantity */}
-          <h3>Quantity</h3>
+          <h2 className="h3">Color</h2>
+          <div className="shoe-color-grid" role="group" aria-label="Color">
+            {colors.map((color) => (
+              <button
+                type="button"
+                key={color}
+                className={(selectedColor || colors[0]) === color ? "active" : ""}
+                aria-pressed={(selectedColor || colors[0]) === color}
+                onClick={() => setSelectedColor(color)}
+              >
+                {color}
+              </button>
+            ))}
+          </div>
 
+          <h2 className="h3">Quantity</h2>
           <div className="shoe-quantity">
-            <button
-              type="button"
-              onClick={decreaseQuantity}
-              aria-label="Decrease quantity"
-            >
+            <button type="button" disabled={quantity <= 1} onClick={() => setQuantity((q) => Math.max(1, q - 1))} aria-label="Decrease quantity">
               −
             </button>
-
-            <span>{quantity}</span>
-
-            <button
-              type="button"
-              onClick={increaseQuantity}
-              aria-label="Increase quantity"
-            >
+            <span aria-live="polite">{quantity}</span>
+            <button type="button" disabled={quantity >= maxQuantity} onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))} aria-label="Increase quantity">
               +
             </button>
           </div>
 
-          {/* Notification */}
           {notification && (
-            <p
-              role="status"
-              style={{
-                color: "#b7ff35",
-                marginBottom: "15px",
-              }}
-            >
+            <p className="shoe-notification" role="alert">
               {notification}
             </p>
           )}
 
-          {/* Action Buttons */}
           <div className="shoe-actions">
-            <button
-              type="button"
-              className="shoe-cart-btn"
-              onClick={addToCart}
-            >
+            <button type="button" className="shoe-cart-btn" disabled={outOfStock} onClick={addToCart}>
               + Add to Cart
             </button>
-
+            <button type="button" className="shoe-buy-btn" disabled={outOfStock} onClick={buyNow}>
+              Buy Now →
+            </button>
             <button
               type="button"
-              className="shoe-buy-btn"
-              onClick={buyNow}
+              className={`shoe-fav-btn ${favorite ? "active" : ""}`}
+              aria-pressed={favorite}
+              onClick={() => onFavorite(product.id)}
+              aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
             >
-              Buy Now →
+              {favorite ? "♥" : "♡"}
             </button>
           </div>
 
-          {/* Benefits */}
+          <dl className="shoe-specs">
+            <div>
+              <dt>Brand</dt>
+              <dd>{product.brand}</dd>
+            </div>
+            <div>
+              <dt>Category</dt>
+              <dd>{product.category}</dd>
+            </div>
+            <div>
+              <dt>Color</dt>
+              <dd>{product.color}</dd>
+            </div>
+            <div>
+              <dt>Sizes</dt>
+              <dd>EU 36–46</dd>
+            </div>
+            <div>
+              <dt>SKU</dt>
+              <dd>SHOES-{String(product.id).padStart(4, "0")}</dd>
+            </div>
+            <div>
+              <dt>Availability</dt>
+              <dd>{info.label}</dd>
+            </div>
+          </dl>
+
           <div className="shoe-benefits">
-            <p>✓ Free shipping on orders over $150</p>
+            <p>✓ Free shipping on orders of $150 or more</p>
             <p>✓ 30-day demo returns</p>
-            <p>✓ Secure demo checkout</p>
-            <p>✓ No real payments are processed</p>
+            <p>✓ Card details are never stored on SHOES</p>
           </div>
         </section>
       </div>
+
+      <Reviews productId={product.id} />
+
+      {relatedProducts.length > 0 && (
+        <section className="section">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow">YOU MAY ALSO LIKE</div>
+              <h2>Related Products</h2>
+            </div>
+          </div>
+          <div className="product-grid row-grid">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id} product={p} {...cardProps(p)} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {recentProducts.length > 0 && (
+        <section className="section">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow">YOUR HISTORY</div>
+              <h2>Recently Viewed</h2>
+            </div>
+          </div>
+          <div className="product-grid row-grid">
+            {recentProducts.map((p) => (
+              <ProductCard key={p.id} product={p} {...cardProps(p)} />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
+}
+
+// Re-mount per product so size/quantity/gallery state resets on navigation.
+export default function ProductPage(props) {
+  const { id } = useParams();
+  return <ProductDetails key={id} {...props} />;
 }

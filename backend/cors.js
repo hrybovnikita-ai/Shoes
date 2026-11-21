@@ -21,7 +21,7 @@ const DEFAULT_ORIGINS = [
 
 const ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const ALLOWED_HEADERS = "Content-Type,Authorization,X-Receipt-Token";
-const EXPOSED_HEADERS = "Content-Disposition";
+const EXPOSED_HEADERS = "Content-Disposition,X-Request-Id";
 
 function normalizeOrigin(value) {
   if (typeof value !== "string") return "";

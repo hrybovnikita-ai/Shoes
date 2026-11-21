@@ -1,140 +1,116 @@
-const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(message, status, code) {
+  constructor(message, status, data) {
     super(message);
-    this.name = "ApiError";
     this.status = status;
-    this.code = code;
+    this.data = data;
   }
 }
 
-// Universal API request. Always resolves to parsed JSON or throws ApiError
-// with a readable message — also for non-JSON (e.g. platform 500 pages) and
-// network/CORS failures.
-async function request(path, options = {}) {
-  const { token, ...rest } = options;
+function authHeaders(token) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// Universal JSON request. Tolerates non-JSON error pages (e.g. a proxy 502).
+async function request(path, { token, headers, signal, ...options } = {}) {
   let response;
   try {
     response = await fetch(`${API_URL}${path}`, {
-      ...rest,
+      ...options,
+      signal,
       headers: {
-        ...(rest.body ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...rest.headers,
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...authHeaders(token),
+        ...headers,
       },
     });
-  } catch {
-    // fetch() rejects on network errors and on CORS blocks.
-    throw new ApiError("Can't reach the SHOES server right now. Please try again in a moment.", 0, "NETWORK");
+  } catch (err) {
+    if (err?.name === "AbortError") throw err;
+    throw new ApiError("Cannot reach the SHOES server. Check your connection and try again.", 0);
   }
-
   let data;
-  const type = response.headers.get("content-type") || "";
-  if (type.includes("application/json")) {
-    try {
-      data = await response.json();
-    } catch {
-      data = undefined;
-    }
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
   }
-
   if (!response.ok) {
     const fallback =
-      response.status >= 500
-        ? "The store is temporarily unavailable. Please try again shortly."
-        : `Request failed (${response.status})`;
-    throw new ApiError(data?.message || fallback, response.status, data?.code);
+      response.status === 401
+        ? "Please sign in again."
+        : response.status === 429
+          ? "Too many requests. Please wait a moment."
+          : `Request failed (${response.status})`;
+    throw new ApiError(data?.message || fallback, response.status, data);
   }
-
-  if (data === undefined) {
-    throw new ApiError("The server sent an unexpected response.", response.status, "BAD_RESPONSE");
-  }
-
-  return data;
+  return data ?? {};
 }
 
-// SHOES Backend API
-export const shoesAPI = {
-  // Get all sneakers
-  getProducts: () => request("/products"),
-
-  // Get sneaker by ID
-  getProduct: (id) => request(`/products/${encodeURIComponent(id)}`),
-
-  // Create demo order. The Firebase ID token links the order to the
-  // signed-in account (previously the token argument was ignored, so every
-  // order was stored as a guest order and "My Orders" stayed empty).
-  createOrder: (customer, items, firebaseToken) =>
-    request("/orders", {
-      method: "POST",
-      token: firebaseToken || undefined,
-      body: JSON.stringify({
-        customer,
-        items,
-      }),
-    }),
-
-  // Signed-in user's identity as verified by the backend
-  getMe: (firebaseToken) => request("/me", { token: firebaseToken }),
-
-  // Signed-in user's orders
-  getMyOrders: (firebaseToken) => request("/me/orders", { token: firebaseToken }),
-
-  // Get order receipt information
-  getReceipt: (id, token) =>
-    request(`/orders/${encodeURIComponent(id)}`, {
-      headers: {
-        "x-receipt-token": token,
-      },
-    }),
-
-  // Download PDF receipt
-  downloadReceipt: async (id, token) => {
-    if (!id || !token) {
-      throw new Error("Order ID and receipt token are required");
-    }
-
-    let response;
+async function download(path, { token, receiptToken } = {}) {
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: { ...authHeaders(token), ...(receiptToken ? { "x-receipt-token": receiptToken } : {}) },
+  });
+  if (!response.ok) {
+    let message = "Failed to download the PDF receipt";
     try {
-      response = await fetch(`${API_URL}/orders/${encodeURIComponent(id)}/receipt`, {
-        method: "GET",
-        headers: {
-          "x-receipt-token": token,
-        },
-      });
+      message = (await response.json()).message || message;
     } catch {
-      throw new ApiError("Can't reach the SHOES server right now.", 0, "NETWORK");
+      /* non-JSON error */
     }
+    throw new ApiError(message, response.status);
+  }
+  return response.blob();
+}
 
-    if (!response.ok) {
-      let message = "Failed to download PDF receipt";
+const json = (body) => JSON.stringify(body);
+const enc = encodeURIComponent;
 
-      try {
-        const data = await response.json();
-        message = data.message || message;
-      } catch {
-        // The server may return a non-JSON error
-      }
-
-      throw new ApiError(message, response.status);
-    }
-
-    return response.blob();
-  },
-
-  // Cancel demo order
-  cancelOrder: (id, token) =>
-    request(`/orders/${encodeURIComponent(id)}/cancel`, {
-      method: "PATCH",
-      headers: {
-        "x-receipt-token": token,
-      },
-    }),
-
-  // Check backend health
+export const shoesAPI = {
+  getConfig: (opts) => request("/config", opts),
   getHealth: () => request("/health"),
-
-  // Get store statistics
   getStats: () => request("/stats"),
+
+  getProducts: (opts) => request("/products", opts),
+  getProduct: (id, opts) => request(`/products/${enc(id)}`, opts),
+  getRelated: (id, opts) => request(`/products/${enc(id)}/related`, opts),
+  getReviews: (id, opts) => request(`/products/${enc(id)}/reviews`, opts),
+  createReview: (id, review, token) => request(`/products/${enc(id)}/reviews`, { method: "POST", body: json(review), token }),
+
+  quote: (items, promoCode, opts) => request("/cart/quote", { method: "POST", body: json({ items, promoCode }), ...opts }),
+
+  // payload: { customer, items, promoCode, paymentMethod }
+  createOrder: (payload, token) => request("/orders", { method: "POST", body: json(payload), token }),
+  getReceipt: (id, receiptToken, token) =>
+    request(`/orders/${enc(id)}`, { token, headers: receiptToken ? { "x-receipt-token": receiptToken } : {} }),
+  downloadReceipt: (id, { receiptToken, token } = {}) => {
+    if (!id || (!receiptToken && !token)) throw new ApiError("Order ID and receipt access are required", 400);
+    return download(`/orders/${enc(id)}/receipt`, { receiptToken, token });
+  },
+  cancelOrder: (id, { receiptToken, token } = {}) =>
+    request(`/orders/${enc(id)}/cancel`, { method: "PATCH", token, headers: receiptToken ? { "x-receipt-token": receiptToken } : {} }),
+
+  getMe: (token) => request("/me", { token }),
+  getMyOrders: (token, opts) => request("/me/orders", { token, ...opts }),
+  getFavorites: (token) => request("/me/favorites", { token }),
+  mergeFavorites: (productIds, token) => request("/me/favorites", { method: "PUT", body: json({ productIds }), token }),
+  addFavorite: (id, token) => request(`/me/favorites/${enc(id)}`, { method: "POST", token }),
+  removeFavorite: (id, token) => request(`/me/favorites/${enc(id)}`, { method: "DELETE", token }),
+  linkIdentity: (otherToken, token) => request("/me/link-identity", { method: "POST", body: json({ token: otherToken }), token }),
+  requestOrderClaim: (orderId, token) => request("/me/orders/claim/request", { method: "POST", body: json({ orderId }), token }),
+  confirmOrderClaim: (orderId, code, token) => request("/me/orders/claim/confirm", { method: "POST", body: json({ orderId, code }), token }),
+
+  subscribeNewsletter: (email) => request("/newsletter", { method: "POST", body: json({ email }) }),
 };
+
+export function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
