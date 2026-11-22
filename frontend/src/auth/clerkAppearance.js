@@ -9,7 +9,7 @@ export const shoesClerkAppearance = {
     colorInputBackground: "#0d0d0d",
     colorInputText: "#f5f5f5",
     colorNeutral: "#f5f5f5",
-    borderRadius: "12px",
+    borderRadius: "15px",
     fontFamily: "Inter, 'Segoe UI', Arial, sans-serif",
   },
   layout: { logoPlacement: "inside", socialButtonsVariant: "blockButton" },

@@ -38,7 +38,7 @@
   background: #181818;
   color: white;
   padding: 12px 18px;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   cursor: pointer;
 }
 
@@ -71,7 +71,7 @@
   gap: 22px;
   background: #161616;
   border: 1px solid #303030;
-  border-radius: 18px;
+  border-radius:var(--radius-ui);
   padding: 28px;
   margin-bottom: 26px;
 }
@@ -116,7 +116,7 @@
 .account-panel {
   background: #161616;
   border: 1px solid #303030;
-  border-radius: 18px;
+  border-radius:var(--radius-ui);
   padding: 28px;
 }
 
@@ -146,7 +146,7 @@
   background: #242424;
   color: white;
   border: 1px solid #3b3b3b;
-  border-radius: 9px;
+  border-radius:var(--radius-ui);
   padding: 14px;
   outline: none;
   width: 100%;
@@ -166,7 +166,7 @@
   background: #b8ff35;
   color: #111;
   border: none;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   padding: 14px 20px;
   margin-top: 22px;
   font-weight: 800;
@@ -177,7 +177,7 @@
   background: #242424;
   color: white;
   border: 1px solid #444;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   padding: 14px 20px;
   cursor: pointer;
 }
@@ -186,7 +186,7 @@
   background: #321717;
   color: #ff8888;
   border: 1px solid #653030;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   padding: 14px 20px;
   cursor: pointer;
 }
@@ -224,7 +224,7 @@
 
 .account-placeholder {
   border: 1px dashed #444;
-  border-radius: 12px;
+  border-radius:var(--radius-ui);
   padding: 24px;
   color: #aaa;
   margin-bottom: 20px;
@@ -239,7 +239,7 @@
 .account-error,
 .account-success {
   padding: 14px 18px;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   margin-bottom: 20px;
 }
 
@@ -303,7 +303,7 @@
   padding: 18px;
   background: #101010;
   border: 1px solid #303030;
-  border-radius: 12px;
+  border-radius:var(--radius-ui);
 }
 
 .account-order-top {
@@ -336,7 +336,7 @@
   display: inline-block;
   padding: 7px 10px;
   border: 1px solid #b7ff35;
-  border-radius: 7px;
+  border-radius:var(--radius-ui);
   color: #b7ff35;
   background: #1d2910;
   font-size: 11px;

@@ -1,0 +1,114 @@
+/* Shared geometry. Page styles use this token, including lazy-loaded routes. */
+:root {
+  --radius-ui: 15px;
+}
+
+button,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea,
+[role="button"],
+.nav-links a,
+.account-tabs a {
+  border-radius: var(--radius-ui);
+}
+
+.filter-bar,
+.shopping-cart,
+.drawer,
+.nav-links.open {
+  border-radius: var(--radius-ui);
+}
+
+/* The filter group remains wrapping and suggestions can extend outside it. */
+.filter-bar {
+  border: 1px solid var(--line);
+  padding: 14px;
+}
+
+.advanced-filters,
+.advanced-filters label {
+  min-width: 0;
+}
+
+.advanced-filters select {
+  max-width: 100%;
+}
+
+/* Explicit icon-only controls: equal dimensions prevent oval buttons. */
+.app button:is(.menu-btn, .close-btn, .modal-close, .auth-eye,
+  .favorite:not(.inline), .favorite-modal, .shoe-fav-btn),
+.app .cart-header > button,
+.app .shoe-gallery-controls > button,
+.app .quantity-control > button,
+.app .shoe-quantity > button,
+.app .quantity > button,
+.toast button {
+  border-radius: 50%;
+  width: var(--icon-size, 40px);
+  height: var(--icon-size, 40px);
+  min-width: var(--icon-size, 40px);
+  min-height: var(--icon-size, 40px);
+  padding: 0;
+  flex: 0 0 var(--icon-size, 40px);
+  align-items: center;
+  justify-content: center;
+}
+
+.app button:is(.close-btn, .modal-close, .auth-eye, .favorite:not(.inline),
+  .favorite-modal, .shoe-fav-btn),
+.app .cart-header > button,
+.app .shoe-gallery-controls > button,
+.app .quantity-control > button,
+.app .shoe-quantity > button,
+.app .quantity > button,
+.toast button {
+  display: inline-flex;
+}
+
+.app .shoe-fav-btn { --icon-size: 54px; }
+.app .modal-close, .app .auth-eye { --icon-size: 36px; }
+.app .quantity-control, .app .quantity, .toast { --icon-size: 32px; }
+
+@media (max-width: 900px) {
+  .app .account-trigger {
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    padding: 3px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Header counters are hidden at this breakpoint, leaving only icons. */
+  .app .nav-actions .icon-btn {
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+  }
+
+  .filter-bar { padding: 12px; }
+  .advanced-filters { width: 100%; }
+  .advanced-filters > label:not(.check) { flex: 1 1 120px; }
+  .advanced-filters select { width: 100%; }
+}
+
+/* Search becomes icon-only when the desktop navigation collapses. */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .app .search-trigger {
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+}
+
+/* Keep the checkbox and its label together under the shared form rules. */
+.auth-form .auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -2,6 +2,6 @@
   "name": "shoes-e2e",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node run-e2e.mjs" },
+  "scripts": { "test": "node run-e2e.mjs", "test:admin": "node admin-revenue.mjs" },
   "devDependencies": { "playwright": "^1.65.0" }
 }
