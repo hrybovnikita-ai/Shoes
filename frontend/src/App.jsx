@@ -32,6 +32,7 @@ import HomePage from "./pages/HomePage";
 import "./App.css";
 import "./styles/upgrade.css";
 import "./styles/rounded.css";
+import "./styles/collection-toolbar.css";
 
 // Lazy-loaded pages
 const ProductPage = lazy(() => import("./ProductPage"));
@@ -43,6 +44,8 @@ const AuthPage = lazy(() => import("./AuthPage.jsx"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
 
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
+
+const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 
 // Loading screen
 function PageFallback() {
@@ -333,7 +336,7 @@ export default function App() {
 
           <Route
             path="/about"
-            element={<HomePage {...shared} recent={recent.recent} />}
+            element={<AboutPage />}
           />
 
           <Route

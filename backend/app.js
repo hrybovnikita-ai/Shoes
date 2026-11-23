@@ -8,71 +8,26 @@ const log = require("./lib/logger");
 const { rateLimit } = require("./lib/rateLimit");
 
 // ========================================
-// EXISTING STORE API
+// LOAD EXISTING STORE API
 // ========================================
 
-let home;
-let stripeWebhook;
-let routes;
+// Fail startup if critical routes cannot load.
+// Do not silently replace the entire API with 503.
 
-try {
-  ({ home, stripeWebhook } = require("./controllers"));
-  routes = require("./routes");
-} catch (error) {
-  console.error("SHOES API failed to load:", error);
+const { home, stripeWebhook } = require("./controllers");
+const routes = require("./routes");
+const adminRoutes = require("./routes/admin");
 
-  const unavailable = (req, res) =>
-    res.status(503).json({
-      success: false,
-      code: "API_UNAVAILABLE",
-      message: "The SHOES API is temporarily unavailable",
-    });
-
-  home = stripeWebhook = routes = unavailable;
-}
-
-// ========================================
-// ADMIN API
-// ========================================
-
-let adminRoutes;
-
-try {
-  adminRoutes = require("./routes/admin");
-
-  if (typeof adminRoutes !== "function") {
-    throw new TypeError("Admin router must export an Express router");
+function assertHandler(handler, name) {
+  if (typeof handler !== "function") {
+    throw new TypeError(`${name} must export an Express handler/router`);
   }
-
-  console.log("SHOES: Admin router loaded");
-
-  // Print registered Admin API routes at startup.
-  // Supports Express router structures used by
-  // different Express versions.
-  const layers = adminRoutes.stack || adminRoutes.router?.stack || [];
-
-  const registeredPaths = layers
-    .filter((layer) => layer.route)
-    .map((layer) => {
-      const methods = Object.keys(layer.route.methods || {})
-        .filter((method) => layer.route.methods[method])
-        .join(",")
-        .toUpperCase();
-
-      return `${methods} /api/admin${layer.route.path}`;
-    });
-
-  console.log("SHOES: Registered admin endpoints:", registeredPaths);
-} catch (error) {
-  console.error("SHOES Admin API failed to load:", error);
-
-  adminRoutes = (req, res) =>
-    res.status(503).json({
-      success: false,
-      code: "ADMIN_API_UNAVAILABLE",
-      message: "Admin API is temporarily unavailable",
-    });
 }
+
+assertHandler(home, "home");
+assertHandler(stripeWebhook, "stripeWebhook");
+assertHandler(routes, "routes");
+assertHandler(adminRoutes, "adminRoutes");
 
 // ========================================
 // EXPRESS APPLICATION
@@ -81,18 +36,30 @@ try {
 const app = express();
 
 app.disable("x-powered-by");
-app.set("trust proxy", 1);
+
+// Set this to the number of trusted reverse proxies
+// in your deployment. Default: one proxy.
+const trustProxy = Number(process.env.TRUST_PROXY ?? 1);
+
+if (!Number.isInteger(trustProxy) || trustProxy < 0) {
+  throw new Error("Invalid TRUST_PROXY value");
+}
+
+app.set("trust proxy", trustProxy);
 
 // ========================================
-// SECURITY HEADERS + LOGGING
+// REQUEST ID + SECURITY HEADERS
 // ========================================
 
 app.use((req, res, next) => {
   req.id = crypto.randomUUID();
 
   res.setHeader("X-Request-Id", req.id);
+
   res.setHeader("X-Content-Type-Options", "nosniff");
+
   res.setHeader("X-Frame-Options", "DENY");
+
   res.setHeader("Referrer-Policy", "no-referrer");
 
   res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
@@ -102,10 +69,12 @@ app.use((req, res, next) => {
     "default-src 'none'; frame-ancestors 'none'",
   );
 
+  const privatePaths = ["/api/me", "/api/orders", "/api/admin"];
+
   if (
-    req.path.startsWith("/api/me") ||
-    req.path.startsWith("/api/orders") ||
-    req.path.startsWith("/api/admin")
+    privatePaths.some(
+      (path) => req.path === path || req.path.startsWith(`${path}/`),
+    )
   ) {
     res.setHeader("Cache-Control", "private, no-store");
   }
@@ -135,28 +104,35 @@ app.use(corsMiddleware);
 // STRIPE WEBHOOK
 // ========================================
 
-// Must receive the raw request body.
+// IMPORTANT:
+// Stripe requires the raw request body.
+// This route MUST stay before express.json().
+
 app.post(
   "/api/payments/stripe/webhook",
+
   rateLimit({
     name: "webhook",
     windowMs: 60_000,
     max: 600,
   }),
+
   express.raw({
     type: "application/json",
     limit: "1mb",
   }),
+
   stripeWebhook,
 );
 
 // ========================================
-// JSON PARSER
+// BODY PARSING
 // ========================================
 
 app.use(
   express.json({
     limit: "100kb",
+    strict: true,
   }),
 );
 
@@ -167,37 +143,39 @@ app.use(
 app.get("/", home);
 
 // ========================================
-// PROTECTED ADMIN API
+// ADMIN API
 // ========================================
 
-// Routes:
-// GET /api/admin/me
-// GET /api/admin/health
-// GET /api/admin/stats
-// GET /api/admin/orders
-// GET /api/admin/users
+// Authorization must remain enforced
+// inside the admin router or its middleware.
 
 app.use("/api/admin", adminRoutes);
 
 // ========================================
-// EXISTING STORE API
+// STORE API
 // ========================================
+
+// Existing endpoints are preserved:
+// products, reviews, checkout, orders,
+// account and other registered routes.
 
 app.use("/api", routes);
 
 // ========================================
-// 404 HANDLER
+// NOT FOUND
 // ========================================
 
 app.use((req, res) => {
-  res.status(404).json({
+  return res.status(404).json({
     success: false,
+    code: "NOT_FOUND",
     message: "API endpoint not found",
+    requestId: req.id,
   });
 });
 
 // ========================================
-// DATABASE ERROR CODES
+// DATABASE / NETWORK ERROR CODES
 // ========================================
 
 const UNAVAILABLE_CODES = new Set([
@@ -220,17 +198,29 @@ const UNAVAILABLE_CODES = new Set([
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400) {
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  if (
+    err instanceof SyntaxError &&
+    err.status === 400 &&
+    err.type === "entity.parse.failed"
+  ) {
     return res.status(400).json({
       success: false,
+      code: "INVALID_JSON",
       message: "Invalid JSON request",
+      requestId: req.id,
     });
   }
 
   if (err.type === "entity.too.large") {
     return res.status(413).json({
       success: false,
+      code: "PAYLOAD_TOO_LARGE",
       message: "Request body too large",
+      requestId: req.id,
     });
   }
 
@@ -258,13 +248,14 @@ app.use((err, req, res, next) => {
 
   return res.status(500).json({
     success: false,
+    code: "INTERNAL_SERVER_ERROR",
     message: "Internal server error",
     requestId: req.id,
   });
 });
 
 // ========================================
-// EXPORT APPLICATION
+// EXPORT
 // ========================================
 
 module.exports = app;

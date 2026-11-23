@@ -1,0 +1,127 @@
+/*
+ * Our Collection toolbar: pill-shaped controls (matching the product-card
+ * buttons). Scoped to the #shop section so buttons elsewhere are unchanged.
+ * Colors come from the existing rules; only shape, size and spacing are set here.
+ */
+.app #shop {
+  --toolbar-control-h: 44px;
+  --toolbar-pill: 9999px;
+}
+
+/* Category + Favorites chips */
+.app #shop .filters {
+  gap: 10px;
+  align-items: center;
+}
+
+.app #shop .filter {
+  border-radius: var(--toolbar-pill);
+  min-height: var(--toolbar-control-h);
+  padding: 0 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.app #shop .filter.active {
+  background: #b6ff00;
+  border-color: #b6ff00;
+  color: #080808;
+}
+
+.app #shop .filter:hover:not(.active) {
+  box-shadow: 0 0 14px rgba(182, 255, 0, 0.12);
+}
+
+/* Brand / price / sort dropdowns */
+.app #shop .advanced-filters {
+  gap: 10px;
+  align-items: center;
+}
+
+.app #shop .advanced-filters select {
+  border-radius: var(--toolbar-pill);
+  min-height: var(--toolbar-control-h);
+  padding: 0 40px 0 18px;
+  line-height: 1.2;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' fill='none' stroke='%23b6ff00' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 12px 8px;
+}
+
+.app #shop .advanced-filters select:focus-visible {
+  outline: 2px solid #b6ff00;
+  outline-offset: 2px;
+}
+
+/* "In stock only" as a pill chip */
+.app #shop .advanced-filters .check {
+  min-height: var(--toolbar-control-h);
+  padding: 0 16px;
+  border: 1px solid var(--glass-border, #333);
+  border-radius: var(--toolbar-pill);
+  background: rgba(30, 30, 30, 0.68);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.app #shop .advanced-filters .check:hover {
+  border-color: rgba(182, 255, 0, 0.45);
+}
+
+.app #shop .advanced-filters .check:focus-within {
+  border-color: #b6ff00;
+  box-shadow: 0 0 0 3px rgba(182, 255, 0, 0.1);
+}
+
+.app #shop .result-count {
+  padding-inline: 4px;
+  white-space: nowrap;
+}
+
+/* Search sneakers input */
+.app #shop .search-box {
+  border-radius: var(--toolbar-pill);
+  min-height: var(--toolbar-control-h);
+  padding: 0 18px;
+}
+
+.app #shop .search-box input {
+  border-radius: 0;
+  padding-block: 0;
+  min-height: calc(var(--toolbar-control-h) - 2px);
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .app #shop .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .app #shop .advanced-filters {
+    width: 100%;
+  }
+}
+
+/* Phone */
+@media (max-width: 600px) {
+  .app #shop {
+    --toolbar-control-h: 42px;
+  }
+  .app #shop .filter {
+    padding: 0 16px;
+  }
+  .app #shop .advanced-filters > label:not(.check) {
+    flex: 1 1 140px;
+  }
+  .app #shop .advanced-filters select {
+    width: 100%;
+  }
+}

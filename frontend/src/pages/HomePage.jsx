@@ -64,7 +64,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
 
   // Scroll to the section the URL points at.
   useEffect(() => {
-    const section = { "/shop": "shop", "/categories": "categories", "/about": "about" }[location.pathname] || null;
+    const section = { "/shop": "shop", "/categories": "categories" }[location.pathname] || null;
     const frame = requestAnimationFrame(() => {
       if (section) document.getElementById(section)?.scrollIntoView({ behavior: "smooth", block: "start" });
       else if (location.pathname === "/") window.scrollTo({ top: 0 });
