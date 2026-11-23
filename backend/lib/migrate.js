@@ -19,7 +19,12 @@ function listMigrationFiles(dir = MIGRATIONS_DIR) {
     .sort()
     .map((name) => {
       const sql = fs.readFileSync(path.join(dir, name), "utf8");
-      return { name, sql, checksum: crypto.createHash("sha256").update(sql).digest("hex") };
+      // Line endings don't change a migration: a file applied from a Windows
+      // checkout (CRLF) must match the same file checked out with LF.
+      const lf = sql.replace(/\r\n/g, "\n");
+      const sha = (text) => crypto.createHash("sha256").update(text).digest("hex");
+      const checksum = sha(lf);
+      return { name, sql, checksum, accepted: new Set([checksum, sha(lf.replace(/\n/g, "\r\n")), sha(sql)]) };
     });
 }
 
@@ -45,7 +50,7 @@ async function status(pool, dir) {
       name: m.name,
       applied: applied.has(m.name),
       appliedAt: applied.get(m.name)?.applied_at || null,
-      checksumMismatch: applied.has(m.name) && applied.get(m.name).checksum !== m.checksum,
+      checksumMismatch: applied.has(m.name) && !m.accepted.has(applied.get(m.name).checksum),
     }));
   } finally {
     client.release();
@@ -64,7 +69,7 @@ async function migrate(pool, { dir, dryRun = false, log = () => {} } = {}) {
     const applied = new Map(rows.map((r) => [r.name, r.checksum]));
     for (const m of listMigrationFiles(dir)) {
       if (applied.has(m.name)) {
-        if (applied.get(m.name) !== m.checksum) {
+        if (!m.accepted.has(applied.get(m.name))) {
           throw new Error(`Migration ${m.name} was modified after it was applied (checksum mismatch)`);
         }
         continue;

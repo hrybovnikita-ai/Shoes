@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from "react";
+import { searchText } from "../lib/format";
 
 // Search with live product suggestions (keyboard accessible combobox).
 export default function SearchBox({ products, value, onChange, onSubmit, onPick, id = "search-input", placeholder = "Search sneakers..." }) {
@@ -10,7 +11,7 @@ export default function SearchBox({ products, value, onChange, onSubmit, onPick,
   const suggestions = useMemo(() => {
     if (q.length < 1) return [];
     return products
-      .filter((p) => `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(q))
+      .filter((p) => searchText(p).includes(q))
       .slice(0, 6);
   }, [products, q]);
 

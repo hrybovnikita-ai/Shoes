@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { money, SIZES, stockInfo } from "../lib/format";
+import { money, sizesFor, stockInfo } from "../lib/format";
 
 export default function QuickView({ product, onClose, onAdd, onOpen, favorite, onFavorite }) {
   const [size, setSize] = useState(null);
@@ -43,11 +43,15 @@ export default function QuickView({ product, onClose, onAdd, onOpen, favorite, o
             {product.oldPrice > product.price && <del>{money(product.oldPrice)}</del>}
           </div>
           {product.fromApi && <p className={`stock-pill stock-${info.tone}`}>{info.label}</p>}
-          <p className="muted">Color: {product.color}</p>
+          <p className="muted">
+            Color: {product.color}
+            {product.colorway ? ` · ${product.colorway}` : ""}
+            {product.styleCode ? ` · Style ${product.styleCode}` : ""}
+          </p>
           <fieldset className="qv-sizes">
             <legend>Select EU size</legend>
             <div className="shoe-size-grid">
-              {SIZES.map((s) => (
+              {sizesFor(product).map((s) => (
                 <button
                   key={s}
                   type="button"

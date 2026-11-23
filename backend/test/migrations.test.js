@@ -32,7 +32,7 @@ test("migrations upgrade a legacy database without losing data", async () => {
   await ins("SH-guest-1", null, "guest@example.com");
 
   const applied = await migrate(pool);
-  assert.equal(applied.length, 6);
+  assert.equal(applied.length, 7);
 
   const orders = (await pool.query("SELECT * FROM shoes_orders ORDER BY id")).rows;
   assert.equal(orders.length, 4, "no order lost");
@@ -59,9 +59,29 @@ test("migrations upgrade a legacy database without losing data", async () => {
 test("dry-run changes nothing", async () => {
   await pool.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
   const names = await migrate(pool, { dryRun: true });
-  assert.equal(names.length, 6);
+  assert.equal(names.length, 7);
   const t = await pool.query("SELECT to_regclass('shoes_orders') AS t");
   assert.equal(t.rows[0].t, null);
+});
+
+test("checksums ignore CRLF vs LF line endings but still catch real edits", async () => {
+  const crypto = require("node:crypto");
+  const fs = require("node:fs");
+  const path = require("node:path");
+  await pool.query("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
+  await migrate(pool);
+  // Simulate migrations applied from a Windows (CRLF) checkout.
+  for (const f of fs.readdirSync(path.join(__dirname, "..", "migrations")).filter((n) => n.endsWith(".sql"))) {
+    const sql = fs.readFileSync(path.join(__dirname, "..", "migrations", f), "utf8").replace(/\r?\n/g, "\r\n");
+    const crlf = crypto.createHash("sha256").update(sql).digest("hex");
+    await pool.query("UPDATE shoes_schema_migrations SET checksum = $1 WHERE name = $2", [crlf, f]);
+  }
+  assert.ok((await status(pool)).every((m) => m.applied && !m.checksumMismatch), "CRLF-applied files are not 'modified'");
+  assert.deepEqual(await migrate(pool), []);
+
+  await pool.query("UPDATE shoes_schema_migrations SET checksum = 'deadbeef' WHERE name = '001_baseline.sql'");
+  assert.ok((await status(pool)).find((m) => m.name === "001_baseline.sql").checksumMismatch);
+  await assert.rejects(migrate(pool), /checksum mismatch/);
 });
 
 test.after(() => pool.end());

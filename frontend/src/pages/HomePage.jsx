@@ -5,6 +5,9 @@ import SearchBox from "../components/SearchBox";
 import { ProductGridSkeleton } from "../components/Skeleton";
 import { categories } from "../data/catalog";
 import useDocumentMeta from "../hooks/useDocumentMeta";
+import { COLOR_FILTERS, imageSrcSet, searchText } from "../lib/format";
+
+const COLOR_SWATCH = { Purple: "#8b5cf6", Green: "#22c55e", Orange: "#fb923c", Yellow: "#facc15", Black: "#0a0a0a" };
 
 const PRICE_RANGES = {
   all: { label: "Any price", test: () => true },
@@ -48,6 +51,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const category = categories.some((c) => c.name === params.get("category")) ? params.get("category") : "All";
+  const color = COLOR_FILTERS.find((c) => c.toLowerCase() === String(params.get("color") || "").toLowerCase()) || "All";
 
   const [search, setSearch] = useState(params.get("q") || "");
   const [sort, setSort] = useState("featured");
@@ -82,11 +86,12 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
     const list = products.filter(
       (p) =>
         (category === "All" || p.category === category) &&
+        (color === "All" || String(p.color || "").toLowerCase() === color.toLowerCase()) &&
         (brand === "all" || p.brand === brand) &&
         PRICE_RANGES[price].test(Number(p.price)) &&
         (!inStock || !p.fromApi || p.stock > 0) &&
         (!favoritesOnly || favorites.includes(p.id)) &&
-        (!q || `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(q))
+        (!q || searchText(p).includes(q))
     );
     const sorters = {
       "price-asc": (a, b) => a.price - b.price,
@@ -96,10 +101,24 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
       "best-selling": (a, b) => (b.unitsSold || 0) - (a.unitsSold || 0) || a.id - b.id,
     };
     return sorters[sort] ? [...list].sort(sorters[sort]) : list;
-  }, [products, category, brand, price, inStock, favoritesOnly, favorites, search, sort]);
+  }, [products, category, color, brand, price, inStock, favoritesOnly, favorites, search, sort]);
 
-  const chooseCategory = (value) =>
-    navigate(value === "All" ? "/shop" : `/shop?category=${encodeURIComponent(value)}`);
+  // Category and colour live in the URL so filtered views can be linked.
+  const goShop = ({ category: nextCategory = category, color: nextColor = color } = {}) => {
+    const qs = new URLSearchParams();
+    if (nextCategory !== "All") qs.set("category", nextCategory);
+    if (nextColor !== "All") qs.set("color", nextColor);
+    const query = qs.toString();
+    navigate(query ? `/shop?${query}` : "/shop");
+  };
+  const chooseCategory = (value) => (value === "All" ? navigate("/shop") : goShop({ category: value }));
+  const chooseColor = (value) => goShop({ color: value });
+
+  const colorTiles = COLOR_FILTERS.map((c) => {
+    const items = products.filter((p) => String(p.color || "").toLowerCase() === c.toLowerCase());
+    const cover = items.find((p) => p.styleCode) || items[0];
+    return { name: c, count: items.length, cover };
+  }).filter((t) => t.count > 0);
 
   const clearFilters = () => {
     setSearch("");
@@ -212,6 +231,48 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
         </div>
       </section>
 
+      {colorTiles.length > 0 && (
+        <section className="section" id="colors" aria-labelledby="colors-title">
+          <div className="section-heading">
+            <div>
+              <div className="eyebrow">NIKE COLORWAYS</div>
+              <h2 id="colors-title">Shop by Color</h2>
+              <p className="muted">Verified Nike releases in five colour families.</p>
+            </div>
+          </div>
+          <div className="color-grid">
+            {colorTiles.map((t) => (
+              <button
+                type="button"
+                key={t.name}
+                className="color-card"
+                data-testid="color-card"
+                onClick={() => chooseColor(t.name)}
+                style={{ "--swatch": COLOR_SWATCH[t.name] }}
+              >
+                {t.cover && (
+                  <img
+                    src={t.cover.image}
+                    srcSet={imageSrcSet(t.cover.image)}
+                    sizes="(max-width: 640px) 50vw, 20vw"
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    width="400"
+                    height="400"
+                  />
+                )}
+                <span className="color-card-label">
+                  <span className="color-dot" aria-hidden="true" />
+                  <strong>{t.name}</strong>
+                  <small>{t.count} styles</small>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
       {catalog.loading ? null : (
         <>
           <Row title="Featured Sneakers" eyebrow="TOP RATED" items={featured} cardProps={cardProps} />
@@ -241,7 +302,17 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
         <div className="section-heading">
           <div>
             <div className="eyebrow">CURATED FOR YOU</div>
-            <h2>{favoritesOnly ? "Your Favorites" : category === "All" ? "Our Collection" : category}</h2>
+            <h2>
+              {favoritesOnly
+                ? "Your Favorites"
+                : category === "All"
+                  ? color === "All"
+                    ? "Our Collection"
+                    : `Our Collection · ${color}`
+                  : color === "All"
+                    ? category
+                    : `${category} · ${color}`}
+            </h2>
             <p className="muted">Find your perfect fit from our latest selection.</p>
           </div>
           <SearchBox
@@ -273,6 +344,22 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
             >
               ♥ Favorites ({favorites.length})
             </button>
+          </div>
+          <div className="filters color-filters" role="group" aria-label="Color">
+            {["All", ...COLOR_FILTERS].map((c) => (
+              <button
+                type="button"
+                key={c}
+                className={`filter color-filter ${color === c ? "active" : ""}`}
+                aria-pressed={color === c}
+                data-color={c}
+                style={c === "All" ? undefined : { "--swatch": COLOR_SWATCH[c] }}
+                onClick={() => chooseColor(c)}
+              >
+                {c !== "All" && <span className="color-dot" aria-hidden="true" />}
+                {c === "All" ? "All colors" : c}
+              </button>
+            ))}
           </div>
           <div className="advanced-filters">
             <label>

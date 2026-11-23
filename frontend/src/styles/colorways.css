@@ -1,0 +1,163 @@
+/* Nike colorways: colour filter chips and the "Shop by Color" tiles.
+   Black / neon-green theme, glass surfaces, radius 15px (buttons) and
+   20px (cards). The swatch colour only tints a small dot, never surfaces. */
+
+.color-filters {
+  flex-basis: 100%;
+}
+
+.filter.color-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 15px;
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--swatch, #b7ff38);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.filter.color-filter.active .color-dot {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.45);
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.color-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  color: #fff;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(24, 24, 24, 0.65);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.color-card:hover,
+.color-card:focus-visible {
+  transform: translateY(-4px);
+  border-color: rgba(183, 255, 56, 0.45);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(183, 255, 56, 0.15);
+}
+
+.color-card img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  background: #f4f4f4;
+}
+
+.color-card-label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  padding: 14px 16px 16px;
+}
+
+.color-card-label strong {
+  font-size: 16px;
+}
+
+.color-card-label small {
+  grid-column: 2;
+  color: #b3b3b3;
+  font-size: 12px;
+}
+
+.shoe-description {
+  color: #c9c9c9;
+  line-height: 1.6;
+  margin: 12px 0 20px;
+  max-width: 60ch;
+}
+
+/* Product cards (incl. the new catalog) use the 20px card radius. */
+.product-card,
+.category-card {
+  border-radius: 20px;
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .color-card {
+    background: #181818;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .color-card {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: #181818;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .color-card,
+  .color-card:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .color-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  /* Keep scrollable chip rows inside the viewport: the stacked filter bar
+     must stretch its rows instead of sizing them to their content. */
+  .filter-bar {
+    align-items: stretch;
+  }
+  .filter-bar > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .color-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .color-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .filter.color-filter {
+    flex: 0 0 auto;
+  }
+}
+
+:root[data-theme="light"] .color-card {
+  color: #111;
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="light"] .color-card-label small,
+:root[data-theme="light"] .shoe-description {
+  color: #555;
+}

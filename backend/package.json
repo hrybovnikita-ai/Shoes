@@ -14,7 +14,9 @@
     "migrate": "node scripts/migrate.js up",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:dry-run": "node scripts/migrate.js dry-run",
-    "seed": "node scripts/migrate.js seed"
+    "seed": "node scripts/migrate.js seed",
+    "seed:nike": "node scripts/migrate.js seed-nike",
+    "seed:nike:dry-run": "node scripts/migrate.js seed-nike-dry-run"
   },
   "dependencies": {
     "@clerk/backend": "^3.31.3",

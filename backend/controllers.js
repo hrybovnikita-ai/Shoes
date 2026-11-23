@@ -163,11 +163,22 @@ const getProducts = wrap(async (req, res) => {
   const search = str(req.query.search).toLowerCase().slice(0, 100);
   const category = str(req.query.category).toLowerCase();
   const brand = str(req.query.brand).toLowerCase();
+  // Additive filter: ?color=purple or ?color=purple,black (case-insensitive).
+  const colors = str(req.query.color)
+    .toLowerCase()
+    .split(",")
+    .map((c) => c.trim())
+    .filter((c) => c && c !== "all")
+    .slice(0, 10);
   const { sort, inStock } = req.query;
   const minPrice = Number(req.query.minPrice);
   const maxPrice = Number(req.query.maxPrice);
 
-  if (search) products = products.filter((p) => `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(search));
+  if (search)
+    products = products.filter((p) =>
+      `${p.name} ${p.brand} ${p.category} ${p.color} ${p.colorway || ""} ${p.styleCode || ""}`.toLowerCase().includes(search)
+    );
+  if (colors.length) products = products.filter((p) => colors.includes(String(p.color || "").toLowerCase()));
   if (category && category !== "all") products = products.filter((p) => p.category.toLowerCase() === category);
   if (brand) products = products.filter((p) => p.brand.toLowerCase() === brand);
   if (Number.isFinite(minPrice)) products = products.filter((p) => p.price >= minPrice);
@@ -322,6 +333,10 @@ async function priceCart(db, rawItems, rawPromo, { lock = false } = {}) {
     if (!p) throw new OrderInputError("A product in your cart is no longer available");
     if (i.color && p.color && i.color.toLowerCase() !== String(p.color).toLowerCase()) {
       throw new OrderInputError(`${p.name} is not available in ${i.color}`);
+    }
+    // Products with an explicit size list (migration 007) only sell those sizes.
+    if (Array.isArray(p.sizes) && p.sizes.length && !p.sizes.map(Number).includes(i.size)) {
+      throw new OrderInputError(`${p.name} is not available in EU ${i.size}`);
     }
     qtyById.set(i.id, (qtyById.get(i.id) || 0) + i.quantity);
     return {
