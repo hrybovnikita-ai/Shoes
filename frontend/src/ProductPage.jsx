@@ -6,7 +6,7 @@ import ProductCard from "./components/ProductCard";
 import { LinesSkeleton } from "./components/Skeleton";
 import { useToast } from "./components/Toast";
 import useDocumentMeta from "./hooks/useDocumentMeta";
-import { formatDate, imageSrcSet, money, SIZES, stockInfo } from "./lib/format";
+import { formatDate, imageSrcSet, money, sizeRangeLabel, sizesFor, stockInfo } from "./lib/format";
 import "./ProductPage.css";
 
 import { KEYS } from "./lib/storage";
@@ -225,8 +225,9 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
 
   const createCartItem = () => {
     if (outOfStock) return setNotification("This product is out of stock."), null;
-    if (selectedSize === null) return setNotification("Please select your EU shoe size."), null;
-    const color = selectedColor || colors[0];
+    // Selections can be left over from a previously viewed product.
+    if (selectedSize === null || !sizesFor(product).includes(selectedSize)) return setNotification("Please select your EU shoe size."), null;
+    const color = colors.includes(selectedColor) ? selectedColor : colors[0];
     if (!color) return setNotification("Please select a color."), null;
     setNotification("");
     return { size: selectedSize, color, quantity };
@@ -325,13 +326,14 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
           <p className={`stock-pill stock-${info.tone}`} data-testid="stock">
             {info.label}
           </p>
+          {product.description && <p className="shoe-description">{product.description}</p>}
 
           <div className="shoe-size-header">
             <h2 className="h3">Select Size</h2>
-            <span>EU 36–46</span>
+            <span>{sizeRangeLabel(product)}</span>
           </div>
           <div className="shoe-size-grid" role="group" aria-label="EU size">
-            {SIZES.map((size) => (
+            {sizesFor(product).map((size) => (
               <button
                 type="button"
                 key={size}
@@ -353,8 +355,8 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
               <button
                 type="button"
                 key={color}
-                className={(selectedColor || colors[0]) === color ? "active" : ""}
-                aria-pressed={(selectedColor || colors[0]) === color}
+                className={(colors.includes(selectedColor) ? selectedColor : colors[0]) === color ? "active" : ""}
+                aria-pressed={(colors.includes(selectedColor) ? selectedColor : colors[0]) === color}
                 onClick={() => setSelectedColor(color)}
               >
                 {color}
@@ -410,9 +412,21 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
               <dt>Color</dt>
               <dd>{product.color}</dd>
             </div>
+            {product.colorway && (
+              <div>
+                <dt>Colorway</dt>
+                <dd>{product.colorway}</dd>
+              </div>
+            )}
+            {product.styleCode && (
+              <div>
+                <dt>Style code</dt>
+                <dd>{product.styleCode}</dd>
+              </div>
+            )}
             <div>
               <dt>Sizes</dt>
-              <dd>EU 36–46</dd>
+              <dd>{sizeRangeLabel(product)}</dd>
             </div>
             <div>
               <dt>SKU</dt>

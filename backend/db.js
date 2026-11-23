@@ -75,6 +75,12 @@ function productRow(p) {
     rating: p.rating == null ? null : Number(p.rating),
     stock: p.stock,
     image: p.image,
+    // Migration 007 columns: only present for products that have them, so
+    // the original catalog's API shape is unchanged.
+    ...(p.style_code != null ? { styleCode: p.style_code } : {}),
+    ...(p.colorway != null ? { colorway: p.colorway } : {}),
+    ...(p.description != null ? { description: p.description } : {}),
+    ...(Array.isArray(p.sizes) && p.sizes.length ? { sizes: p.sizes.map(Number) } : {}),
     ...(p.review_count != null ? { reviewCount: Number(p.review_count) } : {}),
     ...(p.review_avg != null ? { reviewAverage: Number(p.review_avg) } : {}),
     ...(p.units_sold != null ? { unitsSold: Number(p.units_sold) } : {}),

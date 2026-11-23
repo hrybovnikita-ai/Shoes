@@ -32,6 +32,7 @@ import HomePage from "./pages/HomePage";
 import "./App.css";
 import "./styles/upgrade.css";
 import "./styles/rounded.css";
+import "./styles/colorways.css";
 
 // Lazy-loaded pages
 const ProductPage = lazy(() => import("./ProductPage"));
