@@ -1,0 +1,2 @@
+# Migration checksums use SHA-256 of file bytes; LF must match git/Neon (applied on Linux).
+backend/migrations/*.sql text eol=lf

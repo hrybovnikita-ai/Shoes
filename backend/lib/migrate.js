@@ -12,6 +12,23 @@ const crypto = require("node:crypto");
 const MIGRATIONS_DIR = path.join(__dirname, "..", "migrations");
 const LOCK_KEY = 7_405_213; // arbitrary advisory-lock id for SHOES migrations
 
+function normalizeSqlEol(sql) {
+  return sql.replace(/\r\n/g, "\n");
+}
+
+/** SHA-256 of migration SQL. New applies record LF; legacy rows may be CRLF (early Windows apply). */
+function sqlChecksum(sql, { eol = "lf" } = {}) {
+  const base = normalizeSqlEol(sql);
+  const payload = eol === "crlf" ? base.replace(/\n/g, "\r\n") : base;
+  return crypto.createHash("sha256").update(payload).digest("hex");
+}
+
+function checksumMatchesStored(stored, sql) {
+  return (
+    stored === sqlChecksum(sql, { eol: "lf" }) || stored === sqlChecksum(sql, { eol: "crlf" })
+  );
+}
+
 function listMigrationFiles(dir = MIGRATIONS_DIR) {
   return fs
     .readdirSync(dir)
@@ -19,7 +36,7 @@ function listMigrationFiles(dir = MIGRATIONS_DIR) {
     .sort()
     .map((name) => {
       const sql = fs.readFileSync(path.join(dir, name), "utf8");
-      return { name, sql, checksum: crypto.createHash("sha256").update(sql).digest("hex") };
+      return { name, sql, checksum: sqlChecksum(sql, { eol: "lf" }) };
     });
 }
 
@@ -45,7 +62,8 @@ async function status(pool, dir) {
       name: m.name,
       applied: applied.has(m.name),
       appliedAt: applied.get(m.name)?.applied_at || null,
-      checksumMismatch: applied.has(m.name) && applied.get(m.name).checksum !== m.checksum,
+      checksumMismatch:
+        applied.has(m.name) && !checksumMatchesStored(applied.get(m.name).checksum, m.sql),
     }));
   } finally {
     client.release();
@@ -64,7 +82,7 @@ async function migrate(pool, { dir, dryRun = false, log = () => {} } = {}) {
     const applied = new Map(rows.map((r) => [r.name, r.checksum]));
     for (const m of listMigrationFiles(dir)) {
       if (applied.has(m.name)) {
-        if (applied.get(m.name) !== m.checksum) {
+        if (!checksumMatchesStored(applied.get(m.name), m.sql)) {
           throw new Error(`Migration ${m.name} was modified after it was applied (checksum mismatch)`);
         }
         continue;
@@ -97,4 +115,12 @@ async function pendingMigrations(pool, dir) {
   return (await status(pool, dir)).filter((m) => !m.applied).map((m) => m.name);
 }
 
-module.exports = { migrate, status, pendingMigrations, listMigrationFiles, MIGRATIONS_DIR };
+module.exports = {
+  migrate,
+  status,
+  pendingMigrations,
+  listMigrationFiles,
+  MIGRATIONS_DIR,
+  sqlChecksum,
+  checksumMatchesStored,
+};
