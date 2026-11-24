@@ -8,6 +8,21 @@
   --toolbar-pill: 9999px;
 }
 
+.brand-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  height: 1.25rem;
+  margin-right: 0.35rem;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(183, 255, 53, 0.15);
+  border: 1px solid rgba(183, 255, 53, 0.35);
+}
+
 /* Category + Favorites chips */
 .app #shop .filters {
   gap: 10px;

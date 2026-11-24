@@ -1,5 +1,9 @@
 "use strict";
 const crypto = require("node:crypto");
+const inventory = require("./commerce/inventory");
+const { CommerceError } = require("./commerce/common");
+const customizer = require("./lib/customizer");
+const tracking = require("./tracking/service");
 const { pool, productRow, orderRow, parseItems, CANCELLABLE_STATUSES } = require("./db");
 const { allowedSizes } = require("./data");
 const { generateReceipt } = require("./receipt");
@@ -15,7 +19,10 @@ const { pendingMigrations } = require("./lib/migrate");
 // ==========================================
 
 const fail = (res, status, message, extra) => res.status(status).json({ success: false, message, ...(extra || {}) });
-const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(err => {
+  if (err instanceof CommerceError) return fail(res, err.status, err.message);
+  next(err);
+});
 const hash = (token) => crypto.createHash("sha256").update(token).digest("hex");
 
 const str = (v) => (typeof v === "string" ? v.trim() : "");
@@ -163,13 +170,22 @@ const getProducts = wrap(async (req, res) => {
   const search = str(req.query.search).toLowerCase().slice(0, 100);
   const category = str(req.query.category).toLowerCase();
   const brand = str(req.query.brand).toLowerCase();
+  const gender = str(req.query.gender).toLowerCase();
   const { sort, inStock } = req.query;
   const minPrice = Number(req.query.minPrice);
   const maxPrice = Number(req.query.maxPrice);
 
-  if (search) products = products.filter((p) => `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(search));
+  if (search) {
+    products = products.filter((p) =>
+      `${p.name} ${p.brand} ${p.category} ${p.color} ${p.description || ""}`.toLowerCase().includes(search)
+    );
+  }
   if (category && category !== "all") products = products.filter((p) => p.category.toLowerCase() === category);
-  if (brand) products = products.filter((p) => p.brand.toLowerCase() === brand);
+  if (brand && brand !== "all") products = products.filter((p) => p.brand.toLowerCase() === brand);
+  if (gender && gender !== "all") {
+    const g = gender.toLowerCase();
+    products = products.filter((p) => String(p.gender || "").toLowerCase() === g);
+  }
   if (Number.isFinite(minPrice)) products = products.filter((p) => p.price >= minPrice);
   if (Number.isFinite(maxPrice) && maxPrice > 0) products = products.filter((p) => p.price <= maxPrice);
   if (inStock === "true") products = products.filter((p) => p.stock > 0);
@@ -292,24 +308,45 @@ function parseCartItems(items) {
     const quantity = Number(item?.quantity);
     const size = Number(item?.size);
     const color = item?.color == null ? "" : String(item.color).trim();
+    let designId = null;
+    if (item?.designId != null && item.designId !== "") {
+      try {
+        designId = customizer.parseDesignId(item.designId);
+      } catch {
+        throw new OrderInputError("Invalid custom design");
+      }
+    }
     if (
       !Number.isInteger(id) ||
       !Number.isInteger(quantity) ||
       quantity < 1 ||
       quantity > pricing.MAX_QUANTITY_PER_LINE ||
-      !allowedSizes.includes(size) ||
+      (!allowedSizes.includes(size) && !(size >= 20 && size <= 55 && Number.isInteger(size * 2))) ||
       color.length > 40
     ) {
       throw new OrderInputError("Invalid product, size or quantity");
     }
-    return { id, quantity, size, color };
+    return { id, quantity, size, color, designId };
   });
 }
 
 // Prices a cart from DB rows. Never uses a client-supplied price.
-async function priceCart(db, rawItems, rawPromo, { lock = false } = {}) {
+async function priceCart(db, rawItems, rawPromo, { lock = false, reservationKey = null, userId = null } = {}) {
   const items = parseCartItems(rawItems);
   if (!pricing.isValidPromoCode(rawPromo ?? "")) throw new OrderInputError("Invalid promo code");
+  const designIds = [...new Set(items.map((i) => i.designId).filter(Boolean))];
+  if (designIds.length && !userId) throw new OrderInputError("Sign in to purchase a saved custom design");
+  let designById = new Map();
+  if (designIds.length) {
+    const { rows: designs } = await db.query(
+      `SELECT * FROM shoes_custom_designs WHERE id = ANY($1::uuid[]) AND user_id = $2`,
+      [designIds, userId]
+    );
+    designById = new Map(designs.map((d) => [d.id, d]));
+    for (const id of designIds) {
+      if (!designById.has(id)) throw new OrderInputError("Custom design not found");
+    }
+  }
   const ids = [...new Set(items.map((i) => i.id))].sort((a, b) => a - b);
   const { rows } = await db.query(
     `SELECT * FROM shoes_products WHERE id = ANY($1::int[]) ORDER BY id ${lock ? "FOR UPDATE" : ""}`,
@@ -320,24 +357,55 @@ async function priceCart(db, rawItems, rawPromo, { lock = false } = {}) {
   const lines = items.map((i) => {
     const p = byId.get(i.id);
     if (!p) throw new OrderInputError("A product in your cart is no longer available");
-    if (i.color && p.color && i.color.toLowerCase() !== String(p.color).toLowerCase()) {
+    const design = i.designId ? designById.get(i.designId) : null;
+    if (design && Number(design.product_id) !== p.id) throw new OrderInputError("Custom design does not match this product");
+  const displayColor = design
+      ? `Custom · ${design.name}`
+      : p.inventory_managed
+        ? i.color
+        : p.color || i.color || null;
+    if (
+      !design &&
+      !p.inventory_managed &&
+      i.color &&
+      p.color &&
+      i.color.toLowerCase() !== String(p.color).toLowerCase()
+    ) {
       throw new OrderInputError(`${p.name} is not available in ${i.color}`);
     }
     qtyById.set(i.id, (qtyById.get(i.id) || 0) + i.quantity);
+    const stockColor = design
+      ? String(p.color || i.color || "")
+      : p.inventory_managed
+        ? i.color
+        : p.color || i.color || null;
+    const surcharge = design ? Number(design.surcharge_cents) || 0 : 0;
     return {
       id: p.id,
-      name: p.name,
+      name: design ? `${p.name} · Custom` : p.name,
       brand: p.brand,
       image: p.image,
       size: i.size,
-      color: p.color || i.color || null,
+      color: displayColor,
+      stockColor,
       quantity: i.quantity,
-      unitPriceCents: pricing.toCents(p.price),
+      unitPriceCents: pricing.toCents(p.price) + surcharge,
+      designId: design?.id || null,
+      designName: design?.name || null,
+      customization: design?.design || null,
     };
   });
   for (const [id, qty] of qtyById) {
     const p = byId.get(id);
     if (qty > p.stock) throw new OrderInputError(p.stock === 0 ? `${p.name} is out of stock` : `Only ${p.stock} left of ${p.name}`, 409);
+  }
+  if (!lock) {
+    await inventory.validate(
+      db,
+      inventory.normalize(lines.map((l) => ({ ...l, color: l.stockColor || l.color }))),
+      rows,
+      reservationKey
+    );
   }
   const totals = pricing.calculateTotals(lines, rawPromo);
   return { lines, totals, qtyById };
@@ -358,7 +426,7 @@ function totalsJson(t) {
 
 const quoteCart = wrap(async (req, res) => {
   try {
-    const { lines, totals } = await priceCart(pool, req.body?.items, req.body?.promoCode ?? "");
+    const { lines, totals } = await priceCart(pool, req.body?.items, req.body?.promoCode ?? "", { userId: req.user?.id });
     res.json({
       success: true,
       lines: lines.map((l) => ({ id: l.id, size: l.size, color: l.color, quantity: l.quantity, unitPriceCents: l.unitPriceCents })),
@@ -437,7 +505,11 @@ const createOrder = wrap(async (req, res) => {
   try {
     await client.query("BEGIN");
     try {
-      ({ lines, totals } = await priceCart(client, body.items, body.promoCode ?? "", { lock: true }));
+      ({ lines, totals } = await priceCart(client, body.items, body.promoCode ?? "", {
+        lock: true,
+        userId: req.user?.id,
+        reservationKey: body.reservationKey,
+      }));
     } catch (err) {
       await client.query("ROLLBACK");
       if (err instanceof OrderInputError) return fail(res, err.status, err.message);
@@ -447,10 +519,23 @@ const createOrder = wrap(async (req, res) => {
     const receiptToken = crypto.randomBytes(32).toString("hex");
     const qty = new Map();
     for (const l of lines) qty.set(l.id, (qty.get(l.id) || 0) + l.quantity);
+    const allocations = await inventory.consume(
+      client,
+      body.reservationKey,
+      lines.map((l) => ({ ...l, color: l.stockColor || l.color })),
+      req.user?.id
+    );
     for (const [pid, q] of qty) {
       await client.query("UPDATE shoes_products SET stock = stock - $1 WHERE id = $2", [q, pid]);
     }
+
     const storedItems = lines.map((l) => ({
+      variantId: allocations.find(
+        (a) =>
+          a.id === l.id &&
+          a.size === l.size &&
+          a.color.toLowerCase() === String(l.stockColor || l.color).toLowerCase()
+      )?.variantId || null,
       id: l.id,
       name: l.name,
       brand: l.brand,
@@ -459,6 +544,9 @@ const createOrder = wrap(async (req, res) => {
       size: l.size,
       color: l.color,
       quantity: l.quantity,
+      ...(l.designId
+        ? { designId: l.designId, designName: l.designName, customization: l.customization }
+        : {}),
     }));
     const isStripe = paymentMethod === "stripe";
     const { rows } = await client.query(
@@ -488,6 +576,8 @@ const createOrder = wrap(async (req, res) => {
         hash(receiptToken),
       ]
     );
+    if (body.reservationKey) await client.query('UPDATE shoes_reservations SET order_id=$2 WHERE id=$1',[body.reservationKey,id]);
+    await tracking.ensureInitialEvent(client, id);
     created = { row: rows[0], receiptToken };
     await client.query("COMMIT");
   } catch (err) {
@@ -555,6 +645,7 @@ async function releaseOrder(orderId, newStatus, paymentStatus, db) {
       if (own) await client.query("ROLLBACK");
       return false;
     }
+    await inventory.restock(client, parseItems(order.items));
     const qty = new Map();
     for (const item of parseItems(order.items)) qty.set(item.id, (qty.get(item.id) || 0) + Number(item.quantity || 0));
     for (const [id, q] of qty) await client.query("UPDATE shoes_products SET stock = stock + $1 WHERE id = $2", [q, id]);
@@ -729,6 +820,12 @@ const linkIdentity = wrap(async (req, res) => {
         return fail(res, 409, "Both sign-ins already have separate legacy accounts; they cannot be merged automatically");
       }
       const foldClerk = fold.clerk_user_id;
+      await client.query(`INSERT INTO shoes_size_preferences(user_id,brand,eu,foot_cm,system)
+        SELECT $1,brand,eu,foot_cm,system FROM shoes_size_preferences WHERE user_id=$2 ON CONFLICT DO NOTHING`,[keep.id,fold.id]);
+      await client.query(`INSERT INTO shoes_price_alerts(user_id,product_id,target_price,active)
+        SELECT $1,product_id,target_price,active FROM shoes_price_alerts WHERE user_id=$2 ON CONFLICT DO NOTHING`,[keep.id,fold.id]);
+      await client.query('UPDATE shoes_price_alerts SET active=FALSE WHERE user_id=$1',[fold.id]);
+      await client.query("UPDATE shoes_reservations SET status='released' WHERE user_id=$1 AND status='active'",[fold.id]);
       await client.query("UPDATE shoes_orders SET user_id = $1, updated_at = NOW() WHERE user_id = $2", [keep.id, fold.id]);
       await client.query(
         `INSERT INTO shoes_favorites (user_id, product_id, created_at)
@@ -990,5 +1087,5 @@ module.exports = {
   subscribeNewsletter,
   getStats,
   // exported for tests
-  _internal: { priceCart, parseCustomer, ownsOrder, releaseOrder, OrderInputError },
+  _internal: { priceCart, parseCustomer, ownsOrder, releaseOrder, authorizedOrder, OrderInputError },
 };

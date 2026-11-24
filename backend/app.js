@@ -15,6 +15,7 @@ const { rateLimit } = require("./lib/rateLimit");
 // Do not silently replace the entire API with 503.
 
 const { home, stripeWebhook } = require("./controllers");
+const { clerkWebhook } = require("./lib/clerkWebhook");
 const routes = require("./routes");
 const adminRoutes = require("./routes/admin");
 
@@ -126,6 +127,27 @@ app.post(
 );
 
 // ========================================
+// CLERK WEBHOOK (raw body, signed, idempotent)
+// ========================================
+
+app.post(
+  "/api/webhooks/clerk",
+
+  rateLimit({
+    name: "clerk-webhook",
+    windowMs: 60_000,
+    max: 600,
+  }),
+
+  express.raw({
+    type: "application/json",
+    limit: "512kb",
+  }),
+
+  clerkWebhook,
+);
+
+// ========================================
 // BODY PARSING
 // ========================================
 
@@ -159,6 +181,9 @@ app.use("/api/admin", adminRoutes);
 // products, reviews, checkout, orders,
 // account and other registered routes.
 
+app.use("/api", require("./commerce/routes"));
+app.use("/api", require("./customizer/routes"));
+app.use("/api", require("./tracking/routes"));
 app.use("/api", routes);
 
 // ========================================

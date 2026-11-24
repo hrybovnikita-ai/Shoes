@@ -3,7 +3,9 @@ import { shoesAPI } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import "./AdminDashBoard.css";
 
-const sections = ["Overview", "Products", "Orders", "Users"];
+import AdminCommerce from "../commerce/AdminCommerce";
+import AdminTrackingPanel from "../admin/AdminTrackingPanel";
+const sections = ["Overview", "Products", "Inventory", "Orders", "Tracking", "Users"];
 
 const money = (value) =>
   new Intl.NumberFormat("en-US", {
@@ -28,7 +30,7 @@ function EmptyRow({ columns, children }) {
 }
 
 export default function AdminDashboard() {
-  const { getFirebaseToken } = useAuth();
+  const { getToken } = useAuth();
 
   const [section, setSection] = useState("Overview");
   const [search, setSearch] = useState("");
@@ -49,10 +51,10 @@ export default function AdminDashboard() {
       setError("");
 
       try {
-        const token = await getFirebaseToken();
+        const token = await getToken();
 
         if (!token) {
-          throw new Error("Firebase authentication is required.");
+          throw new Error("Authentication is required.");
         }
 
         const [productsResponse, statsResponse, ordersResponse, usersResponse] =
@@ -94,7 +96,7 @@ export default function AdminDashboard() {
     return () => {
       cancelled = true;
     };
-  }, [getFirebaseToken]);
+  }, [getToken]);
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -198,6 +200,7 @@ export default function AdminDashboard() {
           </>
         )}
 
+        {section === "Inventory" && <AdminCommerce/>}
         {section === "Products" && (
           <div className="admin-panel">
             <div className="admin-panel-header">
@@ -285,6 +288,21 @@ export default function AdminDashboard() {
 
             <p>Showing up to 20 recent orders.</p>
           </div>
+        )}
+
+        {section === "Tracking" && (
+          <AdminTrackingPanel
+            orders={orders}
+            onUpdated={async () => {
+              try {
+                const token = await getToken();
+                const ordersResponse = await shoesAPI.getAdminOrders(token);
+                setOrders(Array.isArray(ordersResponse.orders) ? ordersResponse.orders : []);
+              } catch {
+                /* ignore */
+              }
+            }}
+          />
         )}
 
         {section === "Users" && (

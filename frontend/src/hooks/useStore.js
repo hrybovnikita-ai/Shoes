@@ -11,7 +11,6 @@ import {
   subscribe,
 } from "../lib/storage";
 
-import { products as localProducts } from "../data/catalog";
 
 // ========================================
 // ASYNC PRODUCT CATALOG
@@ -49,17 +48,10 @@ export function useCatalog() {
 
       if (controller.signal.aborted) return;
 
-      const products = apiProducts.map((product) => {
-        const local = localProducts.find(
-          (item) => String(item.id) === String(product.id),
-        );
-
-        return {
-          ...(local || {}),
-          ...product,
-          fromApi: true,
-        };
-      });
+      const products = apiProducts.map((product) => ({
+        ...product,
+        fromApi: true,
+      }));
 
       if (mountedRef.current) {
         setState({
@@ -92,7 +84,7 @@ export function useCatalog() {
   }, [refresh]);
 
   return {
-    products: state.products ?? (state.loading ? [] : localProducts),
+    products: state.products ?? [],
 
     loading: state.loading,
     error: state.error,
@@ -148,7 +140,8 @@ export function useConfig() {
 export const sameVariant = (a, b) =>
   String(a.id) === String(b.id) &&
   String(a.size ?? "") === String(b.size ?? "") &&
-  String(a.color ?? "") === String(b.color ?? "");
+  String(a.color ?? "") === String(b.color ?? "") &&
+  String(a.designId ?? "") === String(b.designId ?? "");
 
 function readCart() {
   const value = load(KEYS.cart, null) ?? load(KEYS.legacyCart, []);
@@ -173,10 +166,10 @@ export function useCart() {
     [],
   );
 
-  const add = useCallback((product, { size, color, quantity = 1 } = {}) => {
+  const add = useCallback((product, { size, color, quantity = 1, designId, designName } = {}) => {
     const line = {
       id: product.id,
-      name: product.name,
+      name: designId ? `${product.name} · Custom` : product.name,
       brand: product.brand,
       category: product.category,
       image: product.image,
@@ -184,6 +177,7 @@ export function useCart() {
       size: size ?? product.size,
       color: color ?? product.color ?? null,
       quantity: Math.max(1, Math.min(10, Number(quantity) || 1)),
+      ...(designId ? { designId, designName } : {}),
     };
 
     setCart((current) => {

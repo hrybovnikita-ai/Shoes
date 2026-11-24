@@ -5,7 +5,7 @@
 // exercised here — see e2e/ for the Firebase Auth emulator flow.
 process.env.NODE_ENV = "test";
 process.env.RATE_LIMIT_DISABLED ??= "true"; // the limiter has its own unit test
-process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || "postgres://shoes@127.0.0.1:55432/shoes_test";
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || "postgres://shoes:local-shoes-only@127.0.0.1:55433/shoes_test";
 process.env.FRONTEND_URL = "http://localhost:5173";
 
 const u = new URL(process.env.DATABASE_URL);

@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClerkProvider, useAuth, useClerk, useUser } from "@clerk/react";
-import { shoesClerkAppearance } from "./clerkAppearance";
+import { shoesClerkAppearanceForTheme } from "./clerkAppearance";
 
 function ClerkSync({ onState }) {
   const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
@@ -35,17 +35,32 @@ function ClerkSync({ onState }) {
   return null;
 }
 
+function useSiteTheme() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || "dark");
+  useEffect(() => {
+    const el = document.documentElement;
+    const read = () => setTheme(el.dataset.theme || "dark");
+    const obs = new MutationObserver(read);
+    obs.observe(el, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => obs.disconnect();
+  }, []);
+  return theme;
+}
+
 export default function ClerkRoot({ onState, children }) {
   const navigate = useNavigate();
+  const siteTheme = useSiteTheme();
+  const appearance = useMemo(() => shoesClerkAppearanceForTheme(siteTheme), [siteTheme]);
+  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
   return (
     <ClerkProvider
-      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}
+      publishableKey={publishableKey}
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
       signInUrl="/login"
       signUpUrl="/register"
       afterSignOutUrl="/"
-      appearance={shoesClerkAppearance}
+      appearance={appearance}
     >
       <ClerkSync onState={onState} />
       {children}

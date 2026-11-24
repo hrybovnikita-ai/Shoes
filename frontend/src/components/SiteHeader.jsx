@@ -1,5 +1,32 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+
+const PRIMARY_NAV = [
+  { label: "Home", to: "/" },
+  { label: "Shop", to: "/shop" },
+  { label: "Categories", to: "/categories" },
+  { label: "About", to: "/about" },
+];
+
+function navItemActive(pathname, to) {
+  if (to === "/") return pathname === "/";
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+function useDesktopNavPill() {
+  const [enabled, setEnabled] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 1025px)").matches : true,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1025px)");
+    const onChange = () => setEnabled(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return enabled;
+}
 
 function Avatar({ user, size = 34 }) {
   const label = (user.displayName || user.email || "U").charAt(0).toUpperCase();
@@ -83,7 +110,15 @@ function AccountMenu({ user, go, onLogout }) {
 
 export default function SiteHeader({ go, path, cartCount, favoritesCount, onOpenCart, theme, onToggleTheme, onLogout }) {
   const { user, ready } = useAuth();
+  const { pathname } = useLocation();
+  const activePath = pathname || path;
+  const reduceMotion = useReducedMotion();
+  const showNavPill = useDesktopNavPill();
   const [mobileMenu, setMobileMenu] = useState(false);
+
+  const navSpring = reduceMotion
+    ? { duration: 0 }
+    : { type: "spring", stiffness: 420, damping: 38, mass: 0.85 };
 
   useEffect(() => {
     if (!mobileMenu) return undefined;
@@ -97,18 +132,30 @@ export default function SiteHeader({ go, path, cartCount, favoritesCount, onOpen
     go(to);
   };
 
-  const link = (label, to) => (
-    <a
-      href={to}
-      aria-current={path === to ? "page" : undefined}
-      onClick={(e) => {
-        e.preventDefault();
-        nav(to);
-      }}
-    >
-      {label}
-    </a>
-  );
+  const link = (label, to, { primary = false } = {}) => {
+    const active = navItemActive(activePath, to);
+    return (
+      <a
+        href={to}
+        className={primary ? `nav-primary-item${active ? " is-active" : ""}` : undefined}
+        aria-current={active ? "page" : undefined}
+        onClick={(e) => {
+          e.preventDefault();
+          nav(to);
+        }}
+      >
+        {primary && active && showNavPill && (
+          <motion.span
+            layoutId="active-nav-indicator"
+            className="nav-primary-indicator"
+            aria-hidden="true"
+            transition={navSpring}
+          />
+        )}
+        <span className={primary ? "nav-primary-label" : undefined}>{label}</span>
+      </a>
+    );
+  };
 
   return (
     <>
@@ -131,10 +178,11 @@ export default function SiteHeader({ go, path, cartCount, favoritesCount, onOpen
           </a>
 
           <div className={`nav-links ${mobileMenu ? "open" : ""}`} id="main-menu">
-            {link("Home", "/")}
-            {link("Shop", "/shop")}
-            {link("Categories", "/categories")}
-            {link("About", "/about")}
+            <div className="nav-primary-links" role="presentation">
+              {PRIMARY_NAV.map(({ label, to }) => (
+                <Fragment key={to}>{link(label, to, { primary: true })}</Fragment>
+              ))}
+            </div>
             {mobileMenu && (
               <div className="mobile-only-links">
                 {user ? (

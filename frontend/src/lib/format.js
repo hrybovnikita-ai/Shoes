@@ -9,7 +9,7 @@ export function stockInfo(stock) {
   return { label: "In stock", tone: "in" };
 }
 
-export const PRODUCT_IMAGE_FALLBACK = "/images/products/fallback.webp";
+export const PRODUCT_IMAGE_FALLBACK = "/images/products/placeholder.webp";
 
 export function productImageSrc(url) {
   if (typeof url !== "string" || !url.trim()) return PRODUCT_IMAGE_FALLBACK;

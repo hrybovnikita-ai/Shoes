@@ -46,6 +46,8 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
+const CustomizerPage = lazy(() => import("./pages/CustomizerPage.jsx"));
+const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage.jsx"));
 
 // Loading screen
 function PageFallback() {
@@ -86,7 +88,7 @@ function RequireAuth({ children }) {
 
 // Protected administrator routes
 function RequireAdmin({ children }) {
-  const { user, ready, getFirebaseToken } = useAuth();
+  const { user, ready, getToken } = useAuth();
 
   const location = useLocation();
 
@@ -103,7 +105,7 @@ function RequireAdmin({ children }) {
 
     async function verifyAdmin() {
       try {
-        const token = await getFirebaseToken();
+        const token = await getToken();
 
         if (!token) {
           if (!cancelled) {
@@ -137,7 +139,7 @@ function RequireAdmin({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [ready, user, getFirebaseToken]);
+  }, [ready, user, getToken]);
 
   if (!ready || (user && adminStatus === "loading")) {
     return <PageFallback />;
@@ -350,6 +352,24 @@ export default function App() {
                 onViewed={recent.track}
                 recent={recent.recent}
               />
+            }
+          />
+
+          <Route
+            path="/customizer"
+            element={<CustomizerPage products={catalog.products} onAddToCart={addToCart} />}
+          />
+          <Route
+            path="/customizer/:productId"
+            element={<CustomizerPage products={catalog.products} onAddToCart={addToCart} />}
+          />
+
+          <Route
+            path="/orders/:id/tracking"
+            element={
+              <RequireAuth>
+                <OrderTrackingPage />
+              </RequireAuth>
             }
           />
 

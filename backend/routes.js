@@ -66,7 +66,7 @@ router.post("/products/:id/reviews", writeLimit, requireAuth, c.createReview);
 // SHOPPING CART
 // ========================================
 
-router.post("/cart/quote", readLimit, c.quoteCart);
+router.post("/cart/quote", readLimit, optionalAuth, c.quoteCart);
 
 // ========================================
 // ORDERS

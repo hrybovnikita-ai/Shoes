@@ -1,51 +1,71 @@
-# Clerk setup (optional, additive)
+# Clerk authentication (production setup)
 
-Firebase Authentication is and stays the **default** SHOES sign-in. Clerk is an
-opt-in second provider behind a compatibility layer. With no Clerk env vars the
-app behaves exactly as Firebase-only (verified by the test suite and e2e run).
+Firebase remains supported for **legacy SHOES accounts**. Clerk is the **primary sign-in UI** when `VITE_CLERK_PUBLISHABLE_KEY` is set. Both providers map to `shoes_users` on the server; the browser never decides `user_id`.
 
-## How it works
+## Architecture audit summary
 
-| Layer | Firebase | Clerk |
-|---|---|---|
-| Frontend | `src/firebase.js` + `auth/AuthContext.jsx` | `auth/ClerkRoot.jsx` (lazy chunk, loaded only when `VITE_CLERK_PUBLISHABLE_KEY` is set) |
-| Token sent to API | Firebase ID token | Clerk session JWT |
-| Backend verification | `firebase-admin` `verifyIdToken` | `@clerk/backend` `verifyToken` (+ `authorizedParties`) |
-| Routing | token `iss` = `https://securetoken.google.com/<project>` | any other issuer |
+| Layer | Implementation |
+|---|---|
+| Frontend SDK | `@clerk/react` — `ClerkProvider` in `auth/ClerkRoot.jsx` (lazy-loaded) |
+| Sign-in UI | `SignIn` / `SignUp` on `/login` and `/register` (`auth/ClerkAuthPanel.jsx`) |
+| Legacy sign-in | Firebase forms at `/login?method=firebase` |
+| API tokens | `Authorization: Bearer <Firebase ID token or Clerk session JWT>` |
+| Backend verify | `backend/lib/auth.js` — `firebase-admin` + `@clerk/backend` `verifyToken` |
+| User rows | `shoes_users.firebase_uid`, `shoes_users.clerk_user_id` (unique, additive migration `002`) |
+| Webhooks | `POST /api/webhooks/clerk` — signed, idempotent sync (`user.created`, `user.updated`, `user.deleted`) |
+| Account linking | **Manual only** — `POST /api/me/link-identity` with tokens from **both** providers |
+| Admin | `shoes_users.role` — checked server-side on `/api/admin/*` |
 
-Both providers map onto one internal table, `shoes_users`
-(`firebase_uid`, `clerk_user_id`). Every protected route resolves the caller to a
-`shoes_users.id` on the server; the frontend never decides who owns data.
+**Not done automatically:** linking by e-mail, merging duplicate profiles, or deleting user rows.
 
-## Account linking — never silent
+## Environment variables
 
-* Signing in with Clerk using the same e-mail as an existing Firebase account does
-  **not** merge anything. It creates a separate, empty Clerk profile.
-* Linking happens only through **Account → Security → Link accounts**, which calls
-  `POST /api/me/link-identity` with a fresh token from the *other* provider. The user
-  therefore proves ownership of **both** sign-ins (password / Google re-auth).
-* When both sides already have a profile, the Clerk-only profile is folded into the
-  Firebase one (orders, favorites, reviews move over). The folded row is **kept**
-  with `merged_into` set — nothing is deleted. If both sides carry legacy Firebase
-  data the request is refused (409) for manual review.
-* No account is ever unlinked or deleted by code.
+### Frontend (`frontend/.env.local`)
 
-## Enable it
+```env
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_…
+```
 
-1. Create a Clerk application (Development instance first) at https://dashboard.clerk.com.
-   Enable the sign-in methods you want (e-mail, Google…).
-2. Frontend env (`frontend/.env.local` locally; Vercel project **shoes** → Settings → Environment Variables):
-   * `VITE_CLERK_PUBLISHABLE_KEY` — `pk_test_…` (publishable, safe for the browser).
-3. Backend env (`backend/.env`; Vercel project **shoes-backend**):
-   * `CLERK_SECRET_KEY` — `sk_test_…` (secret, backend only).
-   * `CLERK_AUTHORIZED_PARTIES` — comma-separated frontend origins, e.g.
-     `http://localhost:5173,https://shoes-red-alpha.vercel.app`.
-4. In Clerk → Domains / allowed origins, add the same origins.
-5. Apply the database migrations first (see `MIGRATIONS.md`), then deploy.
+Never put `sk_` or webhook secrets in the frontend.
 
-`GET /api/config` reports `features.clerkAuth: true|false` so you can check the backend picked it up.
+### Backend (`backend/.env`)
 
-## Not done / out of scope
-* No user was migrated from Firebase to Clerk. No placeholder keys were created.
-* Clerk was not tested against a real Clerk instance (no keys were available);
-  the backend Clerk path is covered by unit tests with a test verifier only.
+```env
+CLERK_SECRET_KEY=sk_test_…
+CLERK_PUBLISHABLE_KEY=pk_test_…          # optional mirror for scripts
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_…
+CLERK_AUTHORIZED_PARTIES=http://localhost:5173,https://your-production-domain
+```
+
+Also keep existing `FIREBASE_PROJECT_ID` / `GOOGLE_APPLICATION_CREDENTIALS` for legacy tokens.
+
+`GET /api/config` returns `features.clerkAuth` and `features.firebaseAuth`.
+
+## Clerk Dashboard checklist
+
+1. Create application (Development first).
+2. **User & authentication** → enable Email + Password, Google OAuth, e-mail verification, password reset.
+3. **Domains** → allow your frontend origins (same as `CLERK_AUTHORIZED_PARTIES`).
+4. **Webhooks** → endpoint `https://<api-host>/api/webhooks/clerk`, subscribe to `user.created`, `user.updated`, `user.deleted`; copy **Signing secret** to `CLERK_WEBHOOK_SIGNING_SECRET`.
+
+For local webhooks use [Clerk CLI](https://clerk.com/docs/guides/development/webhooks/syncing#with-a-local-tunnel) or ngrok → `http://localhost:5000/api/webhooks/clerk`.
+
+## Migrate existing Firebase users
+
+1. Deploy backend + migrations (no DB reset).
+2. Turn on Clerk env vars; users sign up / sign in with Clerk (new `clerk_user_id` row).
+3. In **My Account → Security**, user signs in once with the **legacy Firebase** method and calls **Link accounts** — proves both identities.
+4. Orders, favorites, reviews, carts, and commerce data move to the surviving row per server rules in `linkIdentity`.
+
+## If credentials are missing
+
+The app runs in **Firebase-only** mode (current default for this repo). Clerk UI and webhooks stay disabled until keys are set — no placeholder keys are shipped.
+
+## Verification commands
+
+```bash
+cd frontend && npm run lint && npm run build
+cd backend && npm test
+```
+
+After changing dependencies, **restart the Vite dev server** (stale HMR can show a white screen if a module failed to resolve once).

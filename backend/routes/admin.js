@@ -91,6 +91,8 @@ router.get("/orders", async (req, res, next) => {
          o.payment_provider,
          o.customer_email,
          o.user_id,
+         o.fulfillment_status,
+         o.tracking_number,
          u.display_name AS customer_name
        FROM shoes_orders AS o
        LEFT JOIN shoes_users AS u

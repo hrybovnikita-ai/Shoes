@@ -1,0 +1,13 @@
+.tracking-page{padding-block:48px 96px;max-width:860px;margin:0 auto}
+.tracking-hero{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:24px}
+.tracking-status-pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 16px;border:1px solid #ffffff25;background:#ffffff0a}
+.tracking-timeline{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.tracking-step{display:flex;gap:14px;padding:14px;border-radius:18px;border:1px solid #ffffff12;background:rgba(22,24,23,.75)}
+.tracking-step.complete{border-color:#b7ff3555;background:#b7ff3510}
+.tracking-step.current{box-shadow:0 0 0 1px #b7ff3560}
+.tracking-dot{width:14px;height:14px;border-radius:50%;background:#555;margin-top:4px;flex:0 0 auto}
+.tracking-step.complete .tracking-dot,.tracking-step.current .tracking-dot{background:#b7ff35}
+.tracking-events{margin-top:28px}
+.tracking-events li{padding:10px 0;border-bottom:1px solid #ffffff12}
+.tracking-live{font-size:.9rem;color:#bbb}
+.tracking-live.live::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#b7ff35;margin-right:8px;box-shadow:0 0 0 4px #b7ff3530}

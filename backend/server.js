@@ -2,7 +2,9 @@
 
 require("dotenv").config({ quiet: true });
 
+const http = require("node:http");
 const app = require("./app");
+const { attachTrackingSocket } = require("./tracking/socket");
 const { pool, seedProducts } = require("./db");
 const { migrate, pendingMigrations } = require("./lib/migrate");
 const log = require("./lib/logger");
@@ -113,7 +115,9 @@ async function start() {
 
   await initializeDatabase();
 
-  server = app.listen(PORT, HOST, () => {
+  server = http.createServer(app);
+  attachTrackingSocket(server);
+  server.listen(PORT, HOST, () => {
     log.info("server.listening", {
       url: `http://localhost:${PORT}/api`,
       host: HOST,

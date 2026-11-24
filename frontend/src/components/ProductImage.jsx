@@ -2,7 +2,7 @@ import { useState } from "react";
 import { imageSrcSet, productImageSrc } from "../lib/format";
 import "./ProductImage.css";
 
-const FALLBACK = "/images/products/fallback.webp";
+const FALLBACK = "/images/products/placeholder.webp";
 
 /**
  * Product photo with lazy load, srcset, skeleton, and graceful fallback.

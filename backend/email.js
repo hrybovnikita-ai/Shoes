@@ -23,10 +23,10 @@ const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const usd = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
-async function send({ to, subject, html, text }) {
+async function send({ to, subject, html, text }, idempotencyKey) {
   if (!emailEnabled()) return { sent: false, reason: "email_not_configured" };
   if (testSender) return testSender({ to, subject, html, text });
-  const { data, error } = await getClient().emails.send({ from: process.env.EMAIL_FROM, to, subject, html, text });
+  const { data, error } = await getClient().emails.send({ from: process.env.EMAIL_FROM, to, subject, html, text }, idempotencyKey ? { idempotencyKey } : undefined);
   if (error) {
     log.warn("email.send_failed", { error: { message: error.message, name: error.name } });
     return { sent: false, reason: error.name || "send_failed" };
@@ -65,4 +65,4 @@ function __setTestSender(fn) {
   testSender = fn;
 }
 
-module.exports = { emailEnabled, sendOrderConfirmation, sendClaimCode, __setTestSender };
+module.exports = { sendPriceAlert: send, emailEnabled, sendOrderConfirmation, sendClaimCode, __setTestSender };

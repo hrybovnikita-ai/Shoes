@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProductCard from "../components/ProductCard";
 import SearchBox from "../components/SearchBox";
+import { shoesAPI } from "../api";
 import { ProductGridSkeleton } from "../components/Skeleton";
-import { categories } from "../data/catalog";
+import { brandFilters, categories, genders } from "../data/catalog";
 import useDocumentMeta from "../hooks/useDocumentMeta";
 
 const PRICE_RANGES = {
@@ -52,6 +53,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
   const [search, setSearch] = useState(params.get("q") || "");
   const [sort, setSort] = useState("featured");
   const [brand, setBrand] = useState("all");
+  const [gender, setGender] = useState("all");
   const [price, setPrice] = useState("all");
   const [inStock, setInStock] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -75,35 +77,39 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
   }, [location.pathname, location.search]);
 
   const products = catalog.products;
-  const brands = useMemo(() => [...new Set(products.map((p) => p.brand))].sort(), [products]);
+  const brands = useMemo(() => {
+    const live = [...new Set(products.map((p) => p.brand))].sort();
+    return live.length ? live : brandFilters;
+  }, [products]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const list = products.filter(
-      (p) =>
-        (category === "All" || p.category === category) &&
-        (brand === "all" || p.brand === brand) &&
-        PRICE_RANGES[price].test(Number(p.price)) &&
-        (!inStock || !p.fromApi || p.stock > 0) &&
-        (!favoritesOnly || favorites.includes(p.id)) &&
-        (!q || `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(q))
-    );
-    const sorters = {
-      "price-asc": (a, b) => a.price - b.price,
-      "price-desc": (a, b) => b.price - a.price,
-      rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
-      newest: (a, b) => b.id - a.id,
-      "best-selling": (a, b) => (b.unitsSold || 0) - (a.unitsSold || 0) || a.id - b.id,
-    };
-    return sorters[sort] ? [...list].sort(sorters[sort]) : list;
-  }, [products, category, brand, price, inStock, favoritesOnly, favorites, search, sort]);
+  const [size,setSize]=useState('');
+  const [color,setColor]=useState('');
+  const [page,setPage]=useState(0);
+  const [retryNonce,setRetryNonce]=useState(0);
+  const [results,setResults]=useState({products:[],loading:true,error:'',count:0});
+  useEffect(()=>{
+    const controller=new AbortController();
+    const timer=setTimeout(async()=>{
+      setResults(s=>({...s,loading:true,error:''}));
+      const bounds={all:{},u100:{maxPrice:99.99},'100-150':{minPrice:100,maxPrice:150},'150-200':{minPrice:150.01,maxPrice:200},o200:{minPrice:200.01}}[price];
+      try {
+        const result=await shoesAPI.search({q:search,category,brand,gender,sort,inStock:String(inStock),...bounds,...(size?{size}:{}),...(color?{color}:{}),limit:48,offset:page*48},{signal:controller.signal});
+        if(!controller.signal.aborted)setResults({...result,loading:false,error:''});
+      }catch(e){if(!controller.signal.aborted)setResults({products:[],loading:false,error:e.message,count:0});}
+    },250);
+    return()=>{clearTimeout(timer);controller.abort();};
+  },[search,category,brand,gender,sort,inStock,price,size,color,page,retryNonce]);
+  const filtered=results.products.filter(p=>!favoritesOnly||favorites.includes(p.id)).map(p=>({...p,fromApi:true}));
+  const colors=[...new Set([...products.map(p=>p.color),...results.products.flatMap(p=>p.colors||[])])].filter(Boolean).sort();
 
   const chooseCategory = (value) =>
     navigate(value === "All" ? "/shop" : `/shop?category=${encodeURIComponent(value)}`);
 
   const clearFilters = () => {
     setSearch("");
+    setSize("");setColor("");setPage(0);
     setBrand("all");
+    setGender("all");
     setPrice("all");
     setInStock(false);
     setFavoritesOnly(false);
@@ -247,7 +253,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
           <SearchBox
             products={products}
             value={search}
-            onChange={setSearch}
+            onChange={value=>{setPage(0);setSearch(value);}}
             onPick={(p) => onOpen(p)}
           />
         </div>
@@ -275,9 +281,11 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
             </button>
           </div>
           <div className="advanced-filters">
+            <label>EU size<select value={size} onChange={e=>{setSize(e.target.value);setPage(0);}}><option value="">All sizes</option>{Array.from({length:11},(_,i)=>36+i).map(s=><option key={s}>{s}</option>)}</select></label>
+            <label>Color<select value={color} onChange={e=>{setColor(e.target.value);setPage(0);}}><option value="">All colors</option>{colors.map(c=><option key={c}>{c}</option>)}</select></label>
             <label>
               <span className="sr-only">Brand</span>
-              <select value={brand} onChange={(e) => setBrand(e.target.value)} aria-label="Brand">
+              <select value={brand} onChange={(e) => {setBrand(e.target.value);setPage(0);}} aria-label="Brand">
                 <option value="all">All brands</option>
                 {brands.map((b) => (
                   <option key={b} value={b}>
@@ -287,8 +295,19 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
               </select>
             </label>
             <label>
+              <span className="sr-only">Gender</span>
+              <select value={gender} onChange={(e) => {setGender(e.target.value);setPage(0);}} aria-label="Gender">
+                <option value="all">All genders</option>
+                {genders.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
               <span className="sr-only">Price</span>
-              <select value={price} onChange={(e) => setPrice(e.target.value)} aria-label="Price range">
+              <select value={price} onChange={(e) => {setPrice(e.target.value);setPage(0);}} aria-label="Price range">
                 {Object.entries(PRICE_RANGES).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v.label}
@@ -298,7 +317,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
             </label>
             <label>
               <span className="sr-only">Sort</span>
-              <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort products">
+              <select value={sort} onChange={(e) => {setSort(e.target.value);setPage(0);}} aria-label="Sort products">
                 {Object.entries(SORTS).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v}
@@ -307,10 +326,10 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
               </select>
             </label>
             <label className="check">
-              <input type="checkbox" checked={inStock} onChange={(e) => setInStock(e.target.checked)} /> In stock only
+              <input type="checkbox" checked={inStock} onChange={(e) => {setInStock(e.target.checked);setPage(0);}} /> In stock only
             </label>
             <span className="result-count" aria-live="polite">
-              {catalog.loading ? "Loading…" : `${filtered.length} products`}
+              {results.loading ? "Searching…" : `${results.count} products`}
             </span>
           </div>
         </div>
@@ -324,8 +343,21 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
           </p>
         )}
 
-        {catalog.loading ? (
+        {results.loading ? (
           <ProductGridSkeleton count={6} />
+        ) : results.error ? (
+          <div className="empty-state">
+            <div className="empty-icon" aria-hidden="true">
+              !
+            </div>
+            <h3>Search is temporarily unavailable</h3>
+            <p className="muted" role="alert">
+              {results.error}
+            </p>
+            <button type="button" className="primary" onClick={() => setRetryNonce((n) => n + 1)}>
+              Try again
+            </button>
+          </div>
         ) : filtered.length ? (
           <div className="product-grid">
             {filtered.map((p) => (
@@ -344,6 +376,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
             </button>
           </div>
         )}
+        {results.count>48 && <nav aria-label="Search pages"><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button><span> Page {page+1} </span><button disabled={(page+1)*48>=results.count} onClick={()=>setPage(p=>p+1)}>Next</button></nav>}
       </section>
 
       {recentProducts.length > 0 && (

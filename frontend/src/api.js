@@ -122,6 +122,34 @@ const enc = encodeURIComponent;
 // ========================================
 
 export const shoesAPI = {
+  search: (params, opts) => request(`/search?${new URLSearchParams(params)}`, opts),
+  inventory: (id, opts) => request(`/products/${enc(id)}/inventory`, opts),
+  sizeGuide: (brand) => request(`/size-guide?${new URLSearchParams({brand})}`),
+  getSizes: (token) => request('/me/sizes', {token}),
+  saveSize: (body, token) => request('/me/sizes', {method:'PUT', body:json(body), token}),
+  prices: (id, opts) => request(`/products/${enc(id)}/prices`, opts),
+  priceAlerts: (token) => request('/me/price-alerts', {token}),
+  watchPrice: (id,targetPrice,token) => request(`/me/price-alerts/${enc(id)}`, {method:'PUT',body:json({targetPrice}),token}),
+  unwatchPrice: (id,token) => request(`/me/price-alerts/${enc(id)}`, {method:'DELETE',token}),
+  reserve: (key,items,token) => request('/reservations', {method:'POST',body:json({key,items}),token}),
+  releaseReservation: (key,token) => request(`/reservations/${enc(key)}`, {method:'DELETE',token}),
+  adminInventory: (token) => request('/admin/inventory',{token}),
+  saveInventory: (id,body,token) => request(`/admin/inventory/${enc(id)}`,{method:'PUT',body:json(body),token}),
+  setPrice: (id,body,token) => request(`/admin/products/${enc(id)}/price`,{method:'PUT',body:json(body),token}),
+  saveChart: (brand,body,token) => request(`/admin/size-charts/${enc(brand)}`,{method:'PUT',body:json(body),token}),
+  customizerProduct: (id, opts) => request(`/products/${enc(id)}/customizer`, opts),
+  customizerQuote: (body, opts) => request('/customizer/quote', { method: 'POST', body: json(body), ...opts }),
+  getDesigns: (token) => request('/me/designs', { token }),
+  saveDesign: (body, token) => request('/me/designs', { method: 'POST', body: json(body), token }),
+  updateDesign: (id, body, token) => request(`/me/designs/${enc(id)}`, { method: 'PUT', body: json(body), token }),
+  deleteDesign: (id, token) => request(`/me/designs/${enc(id)}`, { method: 'DELETE', token }),
+  getOrderTracking: (id, { token, receiptToken } = {}) =>
+    request(`/orders/${enc(id)}/tracking`, {
+      token,
+      headers: receiptToken ? { 'x-receipt-token': receiptToken } : {},
+    }),
+  updateFulfillment: (id, body, token) =>
+    request(`/admin/orders/${enc(id)}/fulfillment`, { method: 'PATCH', body: json(body), token }),
   // ========================================
   // GENERAL
   // ========================================
