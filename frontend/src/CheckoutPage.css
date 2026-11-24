@@ -14,7 +14,7 @@
 .checkout-back {
   background: transparent;
   border: 1px solid #343434;
-  border-radius: 9px;
+  border-radius:var(--radius-ui);
   color: #c7c7c7;
   padding: 12px 17px;
   cursor: pointer;
@@ -52,7 +52,7 @@
 .checkout-summary {
   background: #151515;
   border: 1px solid #303030;
-  border-radius: 18px;
+  border-radius:var(--radius-ui);
   padding: 28px;
   margin-bottom: 20px;
 }
@@ -78,7 +78,7 @@
   background: #0c0c0c;
   color: #fff;
   border: 1px solid #373737;
-  border-radius: 9px;
+  border-radius:var(--radius-ui);
   padding: 15px;
   font: inherit;
   outline: none;
@@ -98,7 +98,7 @@
   padding: 14px;
   background: #242d17;
   border: 1px solid #536a29;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   color: #b7ff35;
   font-size: 13px;
   margin-bottom: 20px;
@@ -108,7 +108,7 @@
   border: 0;
   background: #b7ff35;
   color: #0a0a0a;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   padding: 17px 22px;
   font: inherit;
   font-weight: 800;
@@ -131,7 +131,7 @@
 .checkout-item img {
   width: 66px;
   height: 66px;
-  border-radius: 9px;
+  border-radius:var(--radius-ui);
   object-fit: cover;
 }
 
@@ -175,7 +175,7 @@
 .checkout-empty button {
   background: #b7ff35;
   border: 0;
-  border-radius: 10px;
+  border-radius:var(--radius-ui);
   padding: 15px 25px;
   font-weight: 800;
   cursor: pointer;

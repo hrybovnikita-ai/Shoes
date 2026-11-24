@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { shoesAPI } from "./api";
+import { saveBlob, shoesAPI } from "./api";
+import { useAuth } from "./auth/AuthContext";
+import ProductImage from "./components/ProductImage";
+import { LinesSkeleton } from "./components/Skeleton";
+import useDocumentMeta from "./hooks/useDocumentMeta";
+import { formatDate, money } from "./lib/format";
 import "./CheckoutPage.css";
-
-const money = (value) => {
-  const amount = Number(value);
-  return `$${Number.isFinite(amount) ? amount.toFixed(2) : "0.00"}`;
-};
 
 function readSession(key) {
   try {
@@ -24,395 +24,235 @@ function readSavedOrder() {
   }
 }
 
+const POLL_MS = 2000;
+const POLL_LIMIT = 30; // ~60 seconds
+
+function paymentLabel(order) {
+  if (!order) return "";
+  if (order.paymentProvider === "demo") return "Demo — no real payment";
+  return (
+    {
+      paid: "Paid (Stripe test mode)",
+      unpaid: "Awaiting payment confirmation",
+      failed: "Payment failed",
+      expired: "Payment expired",
+    }[order.paymentStatus] || order.paymentStatus
+  );
+}
+
 export default function SuccessPage({ onComplete }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, getToken } = useAuth();
+  const params = new URLSearchParams(location.search);
+  useDocumentMeta({ title: "Order confirmation", noindex: true });
 
-  const [initialData] = useState(() => ({
-    order: location.state?.order || readSavedOrder(),
-    token:
-      location.state?.receiptToken ||
-      readSession("shoes-receipt-token"),
-  }));
+  const [initial] = useState(() => {
+    const saved = readSavedOrder();
+    const id = location.state?.order?.id || params.get("order") || saved?.id || null;
+    return {
+      id,
+      order: location.state?.order || (saved?.id === id ? saved : null),
+      token: location.state?.receiptToken || readSession("shoes-receipt-token"),
+      clearCart: location.state?.clearCart !== false,
+      fromStripe: Boolean(params.get("session_id")),
+    };
+  });
 
-  const [order, setOrder] = useState(initialData.order);
-  const [loading, setLoading] = useState(
-    Boolean(initialData.order?.id && initialData.token)
-  );
-  const [error, setError] = useState("");
-  const [verified, setVerified] = useState(false);
-  const [downloading, setDownloading] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  const [order, setOrder] = useState(initial.order);
+  const [loading, setLoading] = useState(Boolean(initial.id && initial.token));
+  const [error, setError] = useState(initial.id && initial.token ? "" : "");
+  const [polls, setPolls] = useState(0);
+  const [busy, setBusy] = useState("");
+  const cleared = useRef(false);
 
-  const orderId = initialData.order?.id;
-  const receiptToken = initialData.token;
+  const fetchOrder = useCallback(async () => {
+    const token = user ? await getToken() : null;
+    const r = await shoesAPI.getReceipt(initial.id, initial.token, token);
+    return r.receipt;
+  }, [initial.id, initial.token, user, getToken]);
 
+  // Verify the order with the server; for Stripe, poll until the webhook
+  // has updated it. Only the server decides whether an order is paid.
   useEffect(() => {
-    if (!orderId || !receiptToken) {
-      setLoading(false);
-      return;
-    }
-
+    if (!initial.id || !initial.token) return undefined;
     let cancelled = false;
-
-    async function fetchReceipt() {
+    let timer;
+    let count = 0;
+    const tick = async () => {
       try {
-        const result = await shoesAPI.getReceipt(
-          orderId,
-          receiptToken
-        );
-
+        const receipt = await fetchOrder();
         if (cancelled) return;
-
-        if (!result.success || !result.receipt) {
-          throw new Error("Invalid receipt response.");
-        }
-
-        setOrder(result.receipt);
-        setVerified(true);
+        setOrder(receipt);
         setError("");
+        setLoading(false);
+        count += 1;
+        setPolls(count);
+        if (receipt.paymentProvider === "stripe" && receipt.paymentStatus === "unpaid" && count < POLL_LIMIT) {
+          timer = setTimeout(tick, POLL_MS);
+        }
       } catch (err) {
         if (cancelled) return;
-
-        setVerified(false);
-        setError(
-          err.message ||
-          "Could not verify the receipt with the server."
-        );
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        setError(err.message || "Could not verify the order with the server.");
+        setLoading(false);
       }
-    }
-
-    fetchReceipt();
-
+    };
+    tick();
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [orderId, receiptToken]);
+  }, [initial.id, initial.token, fetchOrder]);
 
-  const downloadPDF = async () => {
-    if (!order?.id || !receiptToken || !verified || downloading) {
-      return;
+  // Empty the cart once the order is confirmed (demo) or paid (Stripe).
+  useEffect(() => {
+    if (cleared.current || !order || !initial.clearCart) return;
+    const done = order.paymentProvider === "demo" ? order.status === "DEMO_CONFIRMED" : order.paymentStatus === "paid";
+    if (done) {
+      cleared.current = true;
+      onComplete?.();
     }
+  }, [order, initial.clearCart, onComplete]);
 
-    setDownloading(true);
-    setError("");
-
+  async function downloadPDF() {
+    setBusy("pdf");
     try {
-      const blob = await shoesAPI.downloadReceipt(
-        order.id,
-        receiptToken
-      );
-
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-
-      link.href = url;
-      link.download = `SHOES-${order.id}.pdf`;
-
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-      }, 1000);
+      const token = user ? await getToken() : null;
+      const blob = await shoesAPI.downloadReceipt(order.id, { receiptToken: initial.token, token });
+      saveBlob(blob, `SHOES-${order.id}.pdf`);
     } catch (err) {
-      setError(
-        err.message || "Could not download PDF receipt."
-      );
+      setError(err.message);
     } finally {
-      setDownloading(false);
+      setBusy("");
     }
-  };
+  }
 
-  const cancelDemoOrder = async () => {
-    if (
-      !order?.id ||
-      !receiptToken ||
-      !verified ||
-      cancelling ||
-      order.status === "DEMO_CANCELLED"
-    ) {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "Are you sure you want to cancel this demo order?"
-    );
-
-    if (!confirmed) return;
-
-    setCancelling(true);
-    setError("");
-
+  async function cancelOrder() {
+    if (!window.confirm("Cancel this order? Reserved items will be released.")) return;
+    setBusy("cancel");
     try {
-      await shoesAPI.cancelOrder(
-        order.id,
-        receiptToken
-      );
-
-      setOrder((current) => ({
-        ...current,
-        status: "DEMO_CANCELLED",
-      }));
+      const token = user ? await getToken() : null;
+      const r = await shoesAPI.cancelOrder(order.id, { receiptToken: initial.token, token });
+      setOrder(r.order || { ...order, status: r.status, canCancel: false });
     } catch (err) {
-      setError(
-        err.message || "Could not cancel demo order."
-      );
+      setError(err.message);
     } finally {
-      setCancelling(false);
+      setBusy("");
     }
-  };
+  }
 
-  const continueShopping = () => {
-    onComplete?.();
-
-    try {
-      sessionStorage.removeItem("shoes-last-order");
-      sessionStorage.removeItem("shoes-receipt-token");
-    } catch {
-      // Session storage may be unavailable.
-    }
-
-    navigate("/shop", { replace: true });
-  };
-
-  if (!order) {
+  if (!initial.id || !initial.token) {
     return (
-      <main className="checkout-page">
-        <div className="checkout-empty">
+      <main className="checkout-page" id="main-content">
+        <div className="checkout-empty empty-state">
           <h1>No Receipt Found</h1>
-          <p>Complete a demo order to view your receipt.</p>
-
-          <button
-            type="button"
-            onClick={() => navigate("/shop")}
-          >
-            Back to Shop →
+          <p>Complete an order to view your receipt{user ? ", or open My Orders" : ""}.</p>
+          <button type="button" onClick={() => navigate(user ? "/account#orders" : "/shop")}>
+            {user ? "Go to My Orders →" : "Back to Shop →"}
           </button>
         </div>
       </main>
     );
   }
 
-  const isCancelled = order.status === "DEMO_CANCELLED";
+  const waiting = order?.paymentProvider === "stripe" && order?.paymentStatus === "unpaid";
+  const paid = order?.paymentStatus === "paid";
+  const cancelled = /CANCELLED|EXPIRED/.test(order?.status || "");
 
   return (
-    <main className="checkout-page">
-      <div className="checkout-container">
-        <div
-          style={{
-            textAlign: "center",
-            marginBottom: 35,
-          }}
-        >
-          <h1
-            style={{
-              color: isCancelled ? "#ff7777" : "#b7ff35",
-            }}
-          >
-            {isCancelled
-              ? "Demo Order Cancelled"
-              : verified
-                ? "✓ Demo Order Confirmed"
-                : "Demo Order Receipt"}
+    <main className="checkout-page" id="main-content">
+      <div className="checkout-container success-container">
+        <div className="checkout-heading">
+          <span>SHOES / ORDER</span>
+          <h1>
+            {cancelled ? "Order Cancelled" : waiting ? "Confirming Payment…" : paid ? "Payment Received" : "Order Confirmed"}
+            <span className="accent">.</span>
           </h1>
-
-          <p>No real payment was processed.</p>
-
-          {loading && (
-            <p role="status">
-              Verifying receipt with server...
-            </p>
-          )}
-
-          {verified && (
-            <p style={{ color: "#b7ff35" }}>
-              ✓ Receipt verified by SHOES Backend
-            </p>
-          )}
-
-          {!loading && !verified && (
-            <p style={{ color: "#ff7777" }}>
-              Receipt verification is unavailable.
-            </p>
-          )}
-
-          {error && (
-            <p
-              role="alert"
-              style={{
-                color: "#ff7777",
-                marginTop: 12,
-              }}
-            >
-              {error}
-            </p>
-          )}
+          {order && <p>Order number <strong data-testid="order-number">{order.id}</strong></p>}
         </div>
 
-        <section
-          className="checkout-panel"
-          style={{
-            maxWidth: 650,
-            margin: "auto",
-          }}
-        >
-          <h2>SHOES. — Electronic Receipt</h2>
-
-          <p>
-            <strong>Order Number:</strong> {order.id}
+        {loading && <LinesSkeleton lines={4} />}
+        {error && (
+          <p className="checkout-error" role="alert">
+            {error}
           </p>
+        )}
 
-          <p>
-            <strong>Date:</strong>{" "}
-            {order.date
-              ? new Date(order.date).toLocaleString()
-              : "—"}
-          </p>
-
-          <p>
-            <strong>Customer:</strong>{" "}
-            {order.customer?.name || "—"}
-          </p>
-
-          <p>
-            <strong>Email:</strong>{" "}
-            {order.customer?.email || "—"}
-          </p>
-
-          <p>
-            <strong>Status:</strong>{" "}
-            <span
-              style={{
-                color: isCancelled ? "#ff7777" : "#b7ff35",
-              }}
-            >
-              {order.status || "UNKNOWN"}
-            </span>
-          </p>
-
-          <hr />
-
-          {(order.items || []).map((item, index) => (
-            <div
-              className="checkout-item"
-              key={`${item.id}-${item.size}-${index}`}
-            >
-              {item.image && (
-                <img
-                  src={item.image}
-                  alt={item.name || "Sneakers"}
-                  loading="lazy"
-                />
-              )}
-
-              <div>
-                <strong>{item.name}</strong>
-
-                <small>
-                  Size: {item.size} | Quantity: {item.quantity}
-                </small>
-              </div>
-
-              <strong>
-                {money(
-                  Number(item.price) *
-                  Number(item.quantity)
-                )}
-              </strong>
-            </div>
-          ))}
-
-          <div className="checkout-totals">
-            <div>
-              <span>Subtotal</span>
-              <strong>{money(order.subtotal)}</strong>
-            </div>
-
-            <div>
-              <span>Shipping</span>
-              <strong>
-                {Number(order.shipping) === 0
-                  ? "FREE"
-                  : money(order.shipping)}
-              </strong>
-            </div>
-
-            <div className="checkout-grand-total">
-              <span>Total (Demo)</span>
-              <strong>{money(order.total)}</strong>
-            </div>
+        {waiting && (
+          <div className="checkout-demo-notice" role="status">
+            <span className="spinner" aria-hidden="true" /> Waiting for Stripe to confirm your test payment… This page updates automatically.
+            {polls >= POLL_LIMIT && " Still pending — refresh later or check My Orders."}
           </div>
+        )}
 
-          <p
-            style={{
-              color: "#aaa",
-              marginTop: 25,
-              fontSize: 12,
-            }}
-          >
-            DEMO RECEIPT — NOT PROOF OF PAYMENT
-          </p>
-        </section>
-
-        <div
-          style={{
-            maxWidth: 650,
-            margin: "25px auto",
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-          }}
-        >
-          <button
-            className="checkout-submit"
-            type="button"
-            onClick={downloadPDF}
-            disabled={!verified || downloading}
-          >
-            {downloading
-              ? "Downloading..."
-              : "↓ Download PDF Receipt"}
-          </button>
-
-          <button
-            className="checkout-submit"
-            type="button"
-            onClick={() => window.print()}
-          >
-            Print / Save Receipt
-          </button>
-
-          {!isCancelled && (
-            <button
-              className="checkout-submit"
-              type="button"
-              onClick={cancelDemoOrder}
-              disabled={!verified || cancelling}
-              style={{
-                background: "#242424",
-                color: "#ff7777",
-              }}
-            >
-              {cancelling
-                ? "Cancelling..."
-                : "Cancel Demo Order"}
-            </button>
-          )}
-
-          <button
-            className="checkout-submit"
-            type="button"
-            onClick={continueShopping}
-          >
-            Continue Shopping →
-          </button>
-        </div>
+        {order && !loading && (
+          <section className="checkout-panel receipt" aria-label="Receipt">
+            <div className="receipt-meta">
+              <div>
+                <span>Date</span>
+                <strong>{formatDate(order.date)}</strong>
+              </div>
+              <div>
+                <span>Order status</span>
+                <strong>{String(order.status).replaceAll("_", " ")}</strong>
+              </div>
+              <div>
+                <span>Payment</span>
+                <strong data-testid="payment-status">{paymentLabel(order)}</strong>
+              </div>
+            </div>
+            {order.items?.map((item, i) => (
+              <div className="checkout-item" key={`${item.id}-${i}`}>
+                {item.image && <ProductImage src={item.image} alt={item.name} width="64" height="64" />}
+                <div>
+                  <strong>{item.name}</strong>
+                  <small>
+                    EU {item.size}
+                    {item.color ? ` · ${item.color}` : ""} · Qty {item.quantity}
+                  </small>
+                </div>
+                <span>{money(item.price * item.quantity)}</span>
+              </div>
+            ))}
+            <div className="checkout-totals">
+              <div>
+                <span>Subtotal</span>
+                <strong>{money(order.subtotal)}</strong>
+              </div>
+              <div>
+                <span>Discount{order.promoCode ? ` (${order.promoCode})` : ""}</span>
+                <strong>-{money(order.discount)}</strong>
+              </div>
+              <div>
+                <span>Shipping</span>
+                <strong>{Number(order.shipping) ? money(order.shipping) : "FREE"}</strong>
+              </div>
+              <div className="checkout-grand-total">
+                <span>Total</span>
+                <strong>{money(order.total)}</strong>
+              </div>
+            </div>
+            <p className="checkout-disclaimer">{order.notice}</p>
+            <div className="receipt-actions">
+              <button type="button" className="checkout-submit" onClick={downloadPDF} disabled={busy === "pdf"}>
+                {busy === "pdf" ? "Preparing PDF…" : "⬇ Download PDF Receipt"}
+              </button>
+              {order.canCancel && (
+                <button type="button" className="checkout-back danger" onClick={cancelOrder} disabled={busy === "cancel"}>
+                  {busy === "cancel" ? "Cancelling…" : "Cancel Order"}
+                </button>
+              )}
+              {user && (
+                <button type="button" className="checkout-back" onClick={() => navigate("/account#orders")}>
+                  My Orders →
+                </button>
+              )}
+              <button type="button" className="checkout-back" onClick={() => navigate("/shop")}>
+                Continue Shopping
+              </button>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

@@ -1,0 +1,196 @@
+:root {
+  --radius-ui: 15px;
+  --radius-small: 10px;
+  --radius-medium: 12px;
+  --radius-large: 15px;
+  --radius-xl: 20px;
+}
+
+button,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea,
+[role="button"],
+.nav-links a,
+.account-tabs a {
+  border-radius: var(--radius-large);
+}
+
+.filter-bar,
+.shopping-cart,
+.drawer,
+.nav-links.open {
+  border-radius: var(--radius-xl);
+}
+
+.filter-bar {
+  border: 1px solid var(--line);
+  padding: 14px;
+}
+
+.advanced-filters,
+.advanced-filters label {
+  min-width: 0;
+}
+
+.advanced-filters select {
+  max-width: 100%;
+}
+
+button,
+.btn,
+.button {
+  border-radius: var(--radius-large);
+}
+
+.product-card,
+.category-card {
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+input,
+select,
+textarea {
+  border-radius: var(--radius-large);
+}
+
+.icon-button {
+  border-radius: 50%;
+}
+
+.app
+  button:is(
+    .menu-btn,
+    .close-btn,
+    .modal-close,
+    .auth-eye,
+    .favorite:not(.inline),
+    .favorite-modal,
+    .shoe-fav-btn
+  ),
+.app .cart-header > button,
+.app .shoe-gallery-controls > button,
+.app .quantity-control > button,
+.app .shoe-quantity > button,
+.app .quantity > button,
+.toast button {
+  border-radius: 50%;
+  width: var(--icon-size, 40px);
+  height: var(--icon-size, 40px);
+  min-width: var(--icon-size, 40px);
+  min-height: var(--icon-size, 40px);
+  padding: 0;
+  flex: 0 0 var(--icon-size, 40px);
+  align-items: center;
+  justify-content: center;
+}
+
+.app
+  button:is(
+    .close-btn,
+    .modal-close,
+    .auth-eye,
+    .favorite:not(.inline),
+    .favorite-modal,
+    .shoe-fav-btn
+  ),
+.app .cart-header > button,
+.app .shoe-gallery-controls > button,
+.app .quantity-control > button,
+.app .shoe-quantity > button,
+.app .quantity > button,
+.toast button {
+  display: inline-flex;
+}
+
+.app .shoe-fav-btn {
+  --icon-size: 54px;
+}
+
+.app .modal-close,
+.app .auth-eye {
+  --icon-size: 36px;
+}
+
+.app .quantity-control,
+.app .quantity,
+.toast {
+  --icon-size: 32px;
+}
+
+@media (max-width: 900px) {
+  .app .account-trigger {
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    padding: 3px;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .app .nav-actions .icon-btn {
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0;
+  }
+
+  .filter-bar {
+    padding: 12px;
+  }
+
+  .advanced-filters {
+    width: 100%;
+  }
+
+  .advanced-filters > label:not(.check) {
+    flex: 1 1 120px;
+  }
+
+  .advanced-filters select {
+    width: 100%;
+  }
+}
+
+@media (min-width: 601px) and (max-width: 1024px) {
+  .app .search-trigger {
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+  }
+}
+
+.auth-form .auth-remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app .hero a,
+.app .hero button {
+  border-radius: 30px;
+}
+
+.app .product-card button,
+.app .shoe-card button {
+  border-radius: 20px;
+}
+
+.app .promo-banner a,
+.app .promo-banner button,
+.app .discount-banner a,
+.app .discount-banner button {
+  border-radius: 20px;
+}
+
+.app section.promo button.primary {
+  border-radius: 30px !important;
+}
+
+.app .product-card button:not(.favorite):not(.shoe-fav-btn) {
+  border-radius: 20px;
+}

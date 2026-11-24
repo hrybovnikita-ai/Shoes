@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   createUserWithEmailAndPassword,
@@ -8,13 +8,19 @@ import {
   signInWithRedirect,
   getRedirectResult,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
 } from "firebase/auth";
 
-import { auth, googleProvider, firebaseConfigured } from "./firebase";
+import { auth, googleProvider, firebaseEnabled } from "./firebase";
+import { useAuth } from "./auth/AuthContext";
+import { clerkEnabled } from "./auth/config";
+import useDocumentMeta from "./hooks/useDocumentMeta";
+
+const ClerkAuthPanel = clerkEnabled ? lazy(() => import("./auth/ClerkAuthPanel.jsx")) : null;
 import "./AuthPage.css";
 
 function Eye({ crossed }) {
@@ -74,20 +80,20 @@ function getErrorMessage(error) {
     "auth/weak-password":
       "Your password is too weak. Use at least 8 characters.",
     // Firebase returns this one code for a wrong password, an e-mail with no
-    // account in this project, AND an account that only has Google sign-in
-    // (email-enumeration protection hides which). Offer every way forward.
+    // account in this project, AND a Google-only account (email-enumeration
+    // protection hides which), so offer every way forward.
     "auth/invalid-credential":
       "We couldn't sign you in with that email and password. Check the password, or — if you created your account with Google — use Continue with Google. You can also reset your password below.",
     "auth/invalid-login-credentials":
       "We couldn't sign you in with that email and password. Check the password, or — if you created your account with Google — use Continue with Google. You can also reset your password below.",
+    "auth/wrong-password":
+      "Incorrect password. Try again, reset your password, or use Continue with Google if that's how you signed up.",
     "auth/missing-password":
       "Please enter your password.",
     "auth/internal-error":
       "Sign-in failed because of a temporary problem. Please try again.",
     "auth/web-storage-unsupported":
       "Your browser blocks storage needed for sign-in. Enable cookies/storage for this site and try again.",
-    "auth/wrong-password":
-      "Incorrect password. Try again, reset your password, or use Continue with Google if that's how you signed up.",
     "auth/user-not-found":
       "No account found with this email. Try signing up.",
     "auth/user-disabled":
@@ -122,11 +128,11 @@ function getErrorMessage(error) {
   );
 }
 
-export default function AuthPage() {
+function FirebaseAuthForm() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const register = location.pathname === "/register";
+  const register = location.pathname.startsWith("/register");
 
   const [form, setForm] = useState({
     name: "",
@@ -141,13 +147,12 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [errorCode, setErrorCode] = useState("");
+  const [notice, setNotice] = useState("");
 
   function showError(err) {
     setErrorCode(err?.code || "");
     setError(getErrorMessage(err));
   }
-
-  const [notice, setNotice] = useState("");
 
   const from = location.state?.from;
   const destination =
@@ -156,25 +161,21 @@ export default function AuthPage() {
     !from.pathname.startsWith("//") &&
     !["/login", "/register"].includes(from.pathname)
       ? `${from.pathname}${from.search || ""}${from.hash || ""}`
-      : "/shop";
+      : "/account";
 
-  // Completes a Google sign-in that fell back to a full-page redirect.
+  // Surfaces errors from a Google sign-in that fell back to a full-page
+  // redirect (success is handled by the auth state listener).
   useEffect(() => {
-    if (!firebaseConfigured) return undefined;
+    if (!firebaseEnabled || !auth) return undefined;
     let active = true;
-    getRedirectResult(auth)
-      .then((result) => {
-        if (active && result?.user) navigate(destination, { replace: true });
-      })
-      .catch((err) => {
-        if (!active) return;
-        console.error("SHOES Google redirect:", err.code);
-        showError(err);
-      });
+    getRedirectResult(auth).catch((err) => {
+      if (!active) return;
+      console.error("SHOES Google redirect:", err.code);
+      showError(err);
+    });
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function change(event) {
@@ -271,6 +272,12 @@ export default function AuthPage() {
             profileError.code || profileError.message
           );
         }
+
+        try {
+          await sendEmailVerification(result.user);
+        } catch (verifyError) {
+          console.warn("SHOES: Verification email failed:", verifyError.code || verifyError.message);
+        }
       } else {
         await signInWithEmailAndPassword(
           auth,
@@ -301,12 +308,9 @@ export default function AuthPage() {
       await signInWithPopup(auth, googleProvider);
       navigate(destination, { replace: true });
     } catch (err) {
-      // Popups are blocked on some browsers / in-app webviews: fall back to
-      // a full-page redirect (completed by getRedirectResult on return).
-      if (
-        err.code === "auth/popup-blocked" ||
-        err.code === "auth/operation-not-supported-in-this-environment"
-      ) {
+      // Popups are blocked in some browsers / in-app webviews: fall back to a
+      // full-page redirect.
+      if (err.code === "auth/popup-blocked" || err.code === "auth/operation-not-supported-in-this-environment") {
         try {
           await signInWithRedirect(auth, googleProvider);
           return;
@@ -314,10 +318,7 @@ export default function AuthPage() {
           console.error("SHOES Google redirect:", redirectError.code);
           showError(redirectError);
         }
-      } else if (
-        err.code !== "auth/popup-closed-by-user" &&
-        err.code !== "auth/cancelled-popup-request"
-      ) {
+      } else if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") {
         console.error("SHOES Google Auth:", err.code);
         showError(err);
       }
@@ -645,6 +646,85 @@ export default function AuthPage() {
           © {new Date().getFullYear()} SHOES.
           All rights reserved.
         </p>
+      </div>
+    </main>
+  );
+}
+
+function destinationFrom(location) {
+  const from = location.state?.from;
+  return typeof from?.pathname === "string" &&
+    from.pathname.startsWith("/") &&
+    !from.pathname.startsWith("//") &&
+    !/^\/(login|register)/.test(from.pathname)
+    ? `${from.pathname}${from.search || ""}${from.hash || ""}`
+    : "/account";
+}
+
+// Chooses the sign-in experience:
+//  - Clerk (if VITE_CLERK_PUBLISHABLE_KEY is set) as the primary option, with
+//    the existing Firebase sign-in still available for existing accounts;
+//  - otherwise the existing Firebase sign-in only (default).
+export default function AuthPage({ mode = "login" }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, ready } = useAuth();
+  const legacy = new URLSearchParams(location.search).get("method") === "firebase";
+  const destination = destinationFrom(location);
+  useDocumentMeta({ title: mode === "register" ? "Create account" : "Sign in", noindex: true });
+
+  useEffect(() => {
+    if (ready && user) navigate(destination, { replace: true });
+  }, [ready, user, destination, navigate]);
+
+  if (!firebaseEnabled && !clerkEnabled) {
+    return (
+      <main className="auth-page">
+        <div className="auth-container">
+          <section className="auth-card">
+            <h1>Sign-in is not configured.</h1>
+            <p>Set the Firebase (VITE_FIREBASE_*) or Clerk (VITE_CLERK_PUBLISHABLE_KEY) variables for the frontend. Guest checkout still works.</p>
+            <button type="button" className="auth-submit" onClick={() => navigate("/shop")}>Back to Shop →</button>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  if (!clerkEnabled || (legacy && firebaseEnabled)) {
+    return (
+      <>
+        {clerkEnabled && (
+          <div className="auth-switch-banner">
+            Using your existing SHOES account (Firebase).{" "}
+            <button type="button" onClick={() => navigate(location.pathname.startsWith("/register") ? "/register" : "/login", { state: location.state })}>
+              Use the new sign-in instead
+            </button>
+          </div>
+        )}
+        <FirebaseAuthForm />
+      </>
+    );
+  }
+
+  return (
+    <main className="auth-page clerk-auth">
+      <div className="auth-container">
+        <button className="auth-brand" type="button" onClick={() => navigate("/")}>
+          SHOES<span>.</span>
+        </button>
+        <Suspense fallback={<p role="status">Loading sign-in…</p>}>
+          <ClerkAuthPanel mode={mode} redirectTo={destination} />
+        </Suspense>
+        {firebaseEnabled && (
+          <p className="auth-legacy-link">
+            Have an account from before?{" "}
+            <button type="button" onClick={() => navigate(`/login?method=firebase`, { state: location.state })}>
+              Sign in with your existing SHOES account
+            </button>
+            <small>After signing in you can link it to your new sign-in in My Account → Security, so your past orders follow you.</small>
+          </p>
+        )}
       </div>
     </main>
   );

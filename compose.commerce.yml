@@ -1,0 +1,31 @@
+name: shoes-commerce-local
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shoes
+      POSTGRES_PASSWORD: local-shoes-only
+      POSTGRES_DB: shoes_test
+    ports: ["127.0.0.1:55433:5432"]
+    volumes: ["shoes_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shoes -d shoes_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports: ["127.0.0.1:56379:6379"]
+    volumes: ["shoes_redis:/data"]
+  meilisearch:
+    image: getmeili/meilisearch:v1.12.8
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-local-shoes-search-key-change-for-hosting}
+      MEILI_NO_ANALYTICS: "true"
+    ports: ["127.0.0.1:57700:7700"]
+    volumes: ["shoes_meili:/meili_data"]
+volumes:
+  shoes_pg:
+  shoes_redis:
+  shoes_meili:

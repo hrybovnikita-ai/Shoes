@@ -1,83 +1,286 @@
-// SHOES API — Express app. This file is also the Vercel entrypoint
-// (Express framework preset detects app.js and its default export).
+"use strict";
+
+const crypto = require("node:crypto");
 const express = require("express");
+
 const { corsMiddleware } = require("./cors");
+const log = require("./lib/logger");
+const { rateLimit } = require("./lib/rateLimit");
+
+// ========================================
+// LOAD EXISTING STORE API
+// ========================================
+
+// Fail startup if critical routes cannot load.
+// Do not silently replace the entire API with 503.
+
+const { home, stripeWebhook } = require("./controllers");
+const { clerkWebhook } = require("./lib/clerkWebhook");
+const routes = require("./routes");
+const adminRoutes = require("./routes/admin");
+
+function assertHandler(handler, name) {
+  if (typeof handler !== "function") {
+    throw new TypeError(`${name} must export an Express handler/router`);
+  }
+}
+
+assertHandler(home, "home");
+assertHandler(stripeWebhook, "stripeWebhook");
+assertHandler(routes, "routes");
+assertHandler(adminRoutes, "adminRoutes");
+
+// ========================================
+// EXPRESS APPLICATION
+// ========================================
 
 const app = express();
 
 app.disable("x-powered-by");
 
-// CORS first, so every response — including 404s, errors and the degraded
-// fallback below — carries the right headers, and preflights end here (204).
-app.use(corsMiddleware);
+// Set this to the number of trusted reverse proxies
+// in your deployment. Default: one proxy.
+const trustProxy = Number(process.env.TRUST_PROXY ?? 1);
 
-app.use(express.json({ limit: "100kb" }));
-
-// Load routes defensively: if a dependency or config problem breaks the
-// import, the API still answers with JSON 503 (with CORS) instead of the
-// whole Vercel function crashing with a plain-text 500.
-let routes;
-let home;
-try {
-  routes = require("./routes");
-  ({ home } = require("./controllers"));
-} catch (error) {
-  console.error("SHOES API failed to load routes:", error);
-  const unavailable = (req, res) =>
-    res.status(503).json({
-      success: false,
-      code: "API_UNAVAILABLE",
-      message: "The SHOES API is temporarily unavailable",
-    });
-  routes = unavailable;
-  home = unavailable;
+if (!Number.isInteger(trustProxy) || trustProxy < 0) {
+  throw new Error("Invalid TRUST_PROXY value");
 }
 
+app.set("trust proxy", trustProxy);
+
+// ========================================
+// REQUEST ID + SECURITY HEADERS
+// ========================================
+
+app.use((req, res, next) => {
+  req.id = crypto.randomUUID();
+
+  res.setHeader("X-Request-Id", req.id);
+
+  res.setHeader("X-Content-Type-Options", "nosniff");
+
+  res.setHeader("X-Frame-Options", "DENY");
+
+  res.setHeader("Referrer-Policy", "no-referrer");
+
+  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; frame-ancestors 'none'",
+  );
+
+  const privatePaths = ["/api/me", "/api/orders", "/api/admin"];
+
+  if (
+    privatePaths.some(
+      (path) => req.path === path || req.path.startsWith(`${path}/`),
+    )
+  ) {
+    res.setHeader("Cache-Control", "private, no-store");
+  }
+
+  const started = Date.now();
+
+  res.on("finish", () => {
+    log.info("http", {
+      id: req.id,
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      ms: Date.now() - started,
+    });
+  });
+
+  next();
+});
+
+// ========================================
+// CORS
+// ========================================
+
+app.use(corsMiddleware);
+
+// ========================================
+// STRIPE WEBHOOK
+// ========================================
+
+// IMPORTANT:
+// Stripe requires the raw request body.
+// This route MUST stay before express.json().
+
+app.post(
+  "/api/payments/stripe/webhook",
+
+  rateLimit({
+    name: "webhook",
+    windowMs: 60_000,
+    max: 600,
+  }),
+
+  express.raw({
+    type: "application/json",
+    limit: "1mb",
+  }),
+
+  stripeWebhook,
+);
+
+// ========================================
+// CLERK WEBHOOK (raw body, signed, idempotent)
+// ========================================
+
+app.post(
+  "/api/webhooks/clerk",
+
+  rateLimit({
+    name: "clerk-webhook",
+    windowMs: 60_000,
+    max: 600,
+  }),
+
+  express.raw({
+    type: "application/json",
+    limit: "512kb",
+  }),
+
+  clerkWebhook,
+);
+
+// ========================================
+// BODY PARSING
+// ========================================
+
+app.use(
+  express.json({
+    limit: "100kb",
+    strict: true,
+  }),
+);
+
+// ========================================
+// HOME
+// ========================================
+
 app.get("/", home);
+
+// ========================================
+// ADMIN API
+// ========================================
+
+// Authorization must remain enforced
+// inside the admin router or its middleware.
+
+app.use("/api/admin", adminRoutes);
+
+// ========================================
+// STORE API
+// ========================================
+
+// Existing endpoints are preserved:
+// products, reviews, checkout, orders,
+// account and other registered routes.
+
+app.use("/api", require("./commerce/routes"));
+app.use("/api", require("./customizer/routes"));
+app.use("/api", require("./tracking/routes"));
 app.use("/api", routes);
 
+// ========================================
+// NOT FOUND
+// ========================================
+
 app.use((req, res) => {
-  res.status(404).json({
+  return res.status(404).json({
     success: false,
+    code: "NOT_FOUND",
     message: "API endpoint not found",
+    requestId: req.id,
   });
 });
 
+// ========================================
+// DATABASE / NETWORK ERROR CODES
+// ========================================
+
 const UNAVAILABLE_CODES = new Set([
   "DB_NOT_CONFIGURED",
-  "AUTH_NOT_CONFIGURED",
   "ECONNREFUSED",
   "ENOTFOUND",
   "ETIMEDOUT",
   "ECONNRESET",
-  "57P01", // admin_shutdown
-  "57P03", // cannot_connect_now
-  "53300", // too_many_connections
-  "28P01", // invalid_password
-  "28000", // invalid_authorization_specification
-  "3D000", // database does not exist
+  "57P01",
+  "57P03",
+  "53300",
+  "28P01",
+  "28000",
+  "3D000",
 ]);
+
+// ========================================
+// GLOBAL ERROR HANDLER
+// ========================================
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
-  if (err instanceof SyntaxError && err.status === 400) {
-    return res.status(400).json({ success: false, message: "Invalid JSON request" });
-  }
-  if (err.type === "entity.too.large") {
-    return res.status(413).json({ success: false, message: "Request body too large" });
+  if (res.headersSent) {
+    return next(err);
   }
 
-  if (UNAVAILABLE_CODES.has(err.code)) {
-    console.error("SHOES API dependency unavailable:", err.code, err.message);
-    return res.status(503).json({
+  if (
+    err instanceof SyntaxError &&
+    err.status === 400 &&
+    err.type === "entity.parse.failed"
+  ) {
+    return res.status(400).json({
       success: false,
-      code: err.code === "AUTH_NOT_CONFIGURED" ? err.code : "SERVICE_UNAVAILABLE",
-      message: "The store is temporarily unavailable. Please try again shortly.",
+      code: "INVALID_JSON",
+      message: "Invalid JSON request",
+      requestId: req.id,
     });
   }
 
-  console.error("SHOES API error:", err);
-  res.status(500).json({ success: false, message: "Internal server error" });
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({
+      success: false,
+      code: "PAYLOAD_TOO_LARGE",
+      message: "Request body too large",
+      requestId: req.id,
+    });
+  }
+
+  if (UNAVAILABLE_CODES.has(err.code)) {
+    log.error("http.dependency_unavailable", {
+      id: req.id,
+      path: req.path,
+      code: err.code,
+    });
+
+    return res.status(503).json({
+      success: false,
+      code: "SERVICE_UNAVAILABLE",
+      message:
+        "The store is temporarily unavailable. Please try again shortly.",
+      requestId: req.id,
+    });
+  }
+
+  log.error("http.unhandled", {
+    id: req.id,
+    path: req.path,
+    error: err,
+  });
+
+  return res.status(500).json({
+    success: false,
+    code: "INTERNAL_SERVER_ERROR",
+    message: "Internal server error",
+    requestId: req.id,
+  });
 });
+
+// ========================================
+// EXPORT
+// ========================================
 
 module.exports = app;

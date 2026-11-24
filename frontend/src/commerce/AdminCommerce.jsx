@@ -1,0 +1,22 @@
+import {useEffect,useState} from 'react';
+import {shoesAPI} from '../api';
+import {useAuth} from '../auth/AuthContext';
+import './commerce.css';
+export default function AdminCommerce(){
+ const {getToken}=useAuth();const [products,setProducts]=useState(null),[productId,setProductId]=useState(''),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false);
+ const [form,setForm]=useState({size:42,color:'',stock:0,activate:false}),[price,setPrice]=useState('');
+ const [source,setSource]=useState(''),[chart,setChart]=useState('');
+ useEffect(()=>{let active=true;getToken().then(token=>shoesAPI.adminInventory(token)).then(r=>{if(active)setProducts(r.products);}).catch(e=>{if(active)setError(e.message);});return()=>{active=false;};},[getToken]);
+ const product=products?.find(p=>String(p.id)===productId);const existing=product?.variants.find(v=>Number(v.size)===Number(form.size)&&v.color.toLowerCase()===form.color.toLowerCase());
+ async function run(action){setBusy(true);setError('');setMessage('');try{const token=await getToken();await action(token);const r=await shoesAPI.adminInventory(token);setProducts(r.products);setMessage('Saved successfully.');}catch(e){setError(e.message);}finally{setBusy(false);}}
+ return <section className="admin-panel commerce-panel"><h2>Inventory & pricing</h2><p>Allocate legacy stock to sizes and colors, then activate size tracking. Existing totals are preserved until activation.</p>
+ {!products&&!error&&<div className="skeleton commerce-skeleton"/>}<label>Product<select value={productId} onChange={e=>{setProductId(e.target.value);setForm({size:42,color:'',stock:0,activate:false});setPrice('');}}><option value="">Choose a product</option>{products?.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+ {product&&<><p>Total stock: {product.stock} · {product.inventory_managed?'Size tracking active':`Unallocated: ${product.stock-product.variants.reduce((s,v)=>s+v.stock,0)}`}</p>
+ <div className="commerce-table"><table><thead><tr><th>EU size</th><th>Color</th><th>Stock</th><th>Edit</th></tr></thead><tbody>{product.variants.map(v=><tr key={v.id}><td>{v.size}</td><td>{v.color}</td><td>{v.stock}</td><td><button type="button" onClick={()=>setForm({size:Number(v.size),color:v.color,stock:v.stock,activate:false})}>Edit</button></td></tr>)}</tbody></table></div>
+ <form className="commerce-fields" onSubmit={e=>{e.preventDefault();run(t=>shoesAPI.saveInventory(product.id,{...form,size:Number(form.size),stock:Number(form.stock),version:existing?.version||0},t));}}>
+ <label>EU size<input required type="number" min="20" max="55" step="0.5" value={form.size} onChange={e=>setForm({...form,size:e.target.value})}/></label><label>Color<input required maxLength="40" value={form.color} onChange={e=>setForm({...form,color:e.target.value})}/></label><label>Physical stock<input required type="number" min="0" max="1000000" value={form.stock} onChange={e=>setForm({...form,stock:e.target.value})}/></label>
+ {!product.inventory_managed&&<label><input type="checkbox" checked={form.activate} onChange={e=>setForm({...form,activate:e.target.checked})}/>Activate when fully allocated</label>}<button disabled={busy}>Save variant</button></form>
+ <form className="commerce-fields" onSubmit={e=>{e.preventDefault();run(t=>shoesAPI.setPrice(product.id,{price:Number(price),expectedPrice:Number(product.price)},t));}}><label>New price ($), currently {product.price}<input required type="number" min="0.01" step="0.01" value={price} onChange={e=>setPrice(e.target.value)}/></label><button disabled={busy}>Update price</button></form>
+ <details><summary>Brand size chart: {product.brand}</summary><p>Use verified adult men / unisex measurements. Enter one row per size: EU, US, UK, foot length cm.</p><form onSubmit={e=>{e.preventDefault();run(t=>{const rows=chart.trim().split('\n').map(line=>{const [eu,us,uk,footCm]=line.split(',').map(Number);return {eu,us,uk,footCm};});return shoesAPI.saveChart(product.brand,{source,rows},t);});}}><label>Chart source<input required maxLength="500" value={source} onChange={e=>setSource(e.target.value)}/></label><label>Chart rows<textarea required rows="6" value={chart} onChange={e=>setChart(e.target.value)}/></label><button disabled={busy}>Save verified chart</button></form></details></>}
+ {error&&<p role="alert" className="form-error">{error}</p>}{message&&<p role="status">{message}</p>}</section>;
+}

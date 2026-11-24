@@ -11,17 +11,20 @@
 
 const DEFAULT_ORIGINS = [
   "https://shoes-red-alpha.vercel.app",
+  "https://shoes.is-a.dev",
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://localhost:5175",
   "http://localhost:4173",
   "http://127.0.0.1:5173",
   "http://127.0.0.1:5174",
+  "http://127.0.0.1:5175",
   "http://127.0.0.1:4173",
 ];
 
 const ALLOWED_METHODS = "GET,POST,PUT,PATCH,DELETE,OPTIONS";
 const ALLOWED_HEADERS = "Content-Type,Authorization,X-Receipt-Token";
-const EXPOSED_HEADERS = "Content-Disposition";
+const EXPOSED_HEADERS = "Content-Disposition,X-Request-Id";
 
 function normalizeOrigin(value) {
   if (typeof value !== "string") return "";

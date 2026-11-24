@@ -1,24 +1,38 @@
 {
   "name": "shoes-backend",
   "private": true,
+  "version": "4.0.0",
+  "main": "server.js",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check app.js && node --check server.js",
-    "test": "node --test --test-concurrency=1 \"test/*.test.js\""
+    "dev": "node --watch server.js",
+    "check": "node scripts/check-syntax.js",
+    "test": "node --test --test-concurrency=1 \"test/*.test.js\"",
+    "migrate": "node scripts/migrate.js up",
+    "migrate:status": "node scripts/migrate.js status",
+    "migrate:dry-run": "node scripts/migrate.js dry-run",
+    "seed": "node scripts/migrate.js seed",
+    "import:user-photos": "node scripts/import-user-photos.js",
+    "resolve:photos": "node scripts/resolve-product-photos.js",
+    "sync:images": "node scripts/generate-placeholder.js && node scripts/sync-product-images.js",
+    "worker": "node commerce/worker.js"
   },
   "dependencies": {
+    "@clerk/backend": "^3.31.3",
+    "bullmq": "^5.63.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "firebase-admin": "^13.10.0",
+    "ioredis": "^5.8.0",
     "pdfkit": "^0.20.2",
     "pg": "^8.23.1",
-    "resend": "^6.39.0"
-  },
-  "devDependencies": {
-    "supertest": "^7.3.2"
+    "resend": "^6.39.0",
+    "sharp": "^0.35.5",
+    "socket.io": "^4.8.4",
+    "stripe": "^23.2.0"
   }
 }

@@ -1,140 +1,380 @@
-const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/+$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || "/api").replace(/\/$/, "");
 
 export class ApiError extends Error {
-  constructor(message, status, code) {
+  constructor(message, status, data) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.code = code;
+    this.data = data;
   }
 }
 
-// Universal API request. Always resolves to parsed JSON or throws ApiError
-// with a readable message — also for non-JSON (e.g. platform 500 pages) and
-// network/CORS failures.
-async function request(path, options = {}) {
-  const { token, ...rest } = options;
+// ========================================
+// AUTHENTICATION
+// ========================================
+
+function authHeaders(token) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+// ========================================
+// UNIVERSAL API REQUEST
+// ========================================
+
+// Supports Firebase and Clerk tokens.
+async function request(path, { token, headers, signal, ...options } = {}) {
   let response;
+
   try {
     response = await fetch(`${API_URL}${path}`, {
-      ...rest,
+      ...options,
+      signal,
       headers: {
-        ...(rest.body ? { "Content-Type": "application/json" } : {}),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...rest.headers,
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...authHeaders(token),
+        ...headers,
       },
     });
-  } catch {
-    // fetch() rejects on network errors and on CORS blocks.
-    throw new ApiError("Can't reach the SHOES server right now. Please try again in a moment.", 0, "NETWORK");
+  } catch (err) {
+    if (err?.name === "AbortError") {
+      throw err;
+    }
+
+    throw new ApiError(
+      "Cannot reach the SHOES server. Check your connection and try again.",
+      0,
+    );
   }
 
   let data;
-  const type = response.headers.get("content-type") || "";
-  if (type.includes("application/json")) {
-    try {
-      data = await response.json();
-    } catch {
-      data = undefined;
-    }
+
+  try {
+    data = await response.json();
+  } catch {
+    data = null;
   }
 
   if (!response.ok) {
     const fallback =
-      response.status >= 500
-        ? "The store is temporarily unavailable. Please try again shortly."
-        : `Request failed (${response.status})`;
-    throw new ApiError(data?.message || fallback, response.status, data?.code);
+      response.status === 401
+        ? "Please sign in again."
+        : response.status === 403
+          ? "You do not have permission to access this resource."
+          : response.status === 429
+            ? "Too many requests. Please wait a moment."
+            : `Request failed (${response.status})`;
+
+    throw new ApiError(
+      data?.message || data?.error || fallback,
+      response.status,
+      data,
+    );
   }
 
-  if (data === undefined) {
-    throw new ApiError("The server sent an unexpected response.", response.status, "BAD_RESPONSE");
-  }
-
-  return data;
+  return data ?? {};
 }
 
-// SHOES Backend API
-export const shoesAPI = {
-  // Get all sneakers
-  getProducts: () => request("/products"),
+// ========================================
+// PDF DOWNLOAD
+// ========================================
 
-  // Get sneaker by ID
-  getProduct: (id) => request(`/products/${encodeURIComponent(id)}`),
+async function download(path, { token, receiptToken } = {}) {
+  let response;
 
-  // Create demo order. The Firebase ID token links the order to the
-  // signed-in account (previously the token argument was ignored, so every
-  // order was stored as a guest order and "My Orders" stayed empty).
-  createOrder: (customer, items, firebaseToken) =>
-    request("/orders", {
-      method: "POST",
-      token: firebaseToken || undefined,
-      body: JSON.stringify({
-        customer,
-        items,
-      }),
-    }),
-
-  // Signed-in user's identity as verified by the backend
-  getMe: (firebaseToken) => request("/me", { token: firebaseToken }),
-
-  // Signed-in user's orders
-  getMyOrders: (firebaseToken) => request("/me/orders", { token: firebaseToken }),
-
-  // Get order receipt information
-  getReceipt: (id, token) =>
-    request(`/orders/${encodeURIComponent(id)}`, {
+  try {
+    response = await fetch(`${API_URL}${path}`, {
       headers: {
-        "x-receipt-token": token,
+        ...authHeaders(token),
+        ...(receiptToken ? { "x-receipt-token": receiptToken } : {}),
       },
-    }),
+    });
+  } catch {
+    throw new ApiError("Cannot reach the SHOES server.", 0);
+  }
 
-  // Download PDF receipt
-  downloadReceipt: async (id, token) => {
-    if (!id || !token) {
-      throw new Error("Order ID and receipt token are required");
-    }
+  if (!response.ok) {
+    let message = "Failed to download the PDF receipt";
 
-    let response;
     try {
-      response = await fetch(`${API_URL}/orders/${encodeURIComponent(id)}/receipt`, {
-        method: "GET",
-        headers: {
-          "x-receipt-token": token,
-        },
-      });
+      const data = await response.json();
+
+      message = data?.message || data?.error || message;
     } catch {
-      throw new ApiError("Can't reach the SHOES server right now.", 0, "NETWORK");
+      // Non-JSON response.
     }
 
-    if (!response.ok) {
-      let message = "Failed to download PDF receipt";
+    throw new ApiError(message, response.status);
+  }
 
-      try {
-        const data = await response.json();
-        message = data.message || message;
-      } catch {
-        // The server may return a non-JSON error
-      }
+  return response.blob();
+}
 
-      throw new ApiError(message, response.status);
-    }
+// ========================================
+// UTILITIES
+// ========================================
 
-    return response.blob();
-  },
+const json = (body) => JSON.stringify(body);
+const enc = encodeURIComponent;
 
-  // Cancel demo order
-  cancelOrder: (id, token) =>
-    request(`/orders/${encodeURIComponent(id)}/cancel`, {
-      method: "PATCH",
-      headers: {
-        "x-receipt-token": token,
-      },
+// ========================================
+// SHOES API
+// ========================================
+
+export const shoesAPI = {
+  search: (params, opts) => request(`/search?${new URLSearchParams(params)}`, opts),
+  inventory: (id, opts) => request(`/products/${enc(id)}/inventory`, opts),
+  sizeGuide: (brand) => request(`/size-guide?${new URLSearchParams({brand})}`),
+  getSizes: (token) => request('/me/sizes', {token}),
+  saveSize: (body, token) => request('/me/sizes', {method:'PUT', body:json(body), token}),
+  prices: (id, opts) => request(`/products/${enc(id)}/prices`, opts),
+  priceAlerts: (token) => request('/me/price-alerts', {token}),
+  watchPrice: (id,targetPrice,token) => request(`/me/price-alerts/${enc(id)}`, {method:'PUT',body:json({targetPrice}),token}),
+  unwatchPrice: (id,token) => request(`/me/price-alerts/${enc(id)}`, {method:'DELETE',token}),
+  reserve: (key,items,token) => request('/reservations', {method:'POST',body:json({key,items}),token}),
+  releaseReservation: (key,token) => request(`/reservations/${enc(key)}`, {method:'DELETE',token}),
+  adminInventory: (token) => request('/admin/inventory',{token}),
+  saveInventory: (id,body,token) => request(`/admin/inventory/${enc(id)}`,{method:'PUT',body:json(body),token}),
+  setPrice: (id,body,token) => request(`/admin/products/${enc(id)}/price`,{method:'PUT',body:json(body),token}),
+  saveChart: (brand,body,token) => request(`/admin/size-charts/${enc(brand)}`,{method:'PUT',body:json(body),token}),
+  customizerProduct: (id, opts) => request(`/products/${enc(id)}/customizer`, opts),
+  customizerQuote: (body, opts) => request('/customizer/quote', { method: 'POST', body: json(body), ...opts }),
+  getDesigns: (token) => request('/me/designs', { token }),
+  saveDesign: (body, token) => request('/me/designs', { method: 'POST', body: json(body), token }),
+  updateDesign: (id, body, token) => request(`/me/designs/${enc(id)}`, { method: 'PUT', body: json(body), token }),
+  deleteDesign: (id, token) => request(`/me/designs/${enc(id)}`, { method: 'DELETE', token }),
+  getOrderTracking: (id, { token, receiptToken } = {}) =>
+    request(`/orders/${enc(id)}/tracking`, {
+      token,
+      headers: receiptToken ? { 'x-receipt-token': receiptToken } : {},
     }),
+  updateFulfillment: (id, body, token) =>
+    request(`/admin/orders/${enc(id)}/fulfillment`, { method: 'PATCH', body: json(body), token }),
+  // ========================================
+  // GENERAL
+  // ========================================
 
-  // Check backend health
+  getConfig: (opts) => request("/config", opts),
+
   getHealth: () => request("/health"),
 
-  // Get store statistics
   getStats: () => request("/stats"),
+
+  // ========================================
+  // ADMIN DASHBOARD
+  // ========================================
+
+  // Verify current administrator.
+  getAdminMe: (token) =>
+    request("/admin/me", {
+      token,
+    }),
+
+  // Real PostgreSQL statistics.
+  getAdminStats: (token) =>
+    request("/admin/stats", {
+      token,
+    }),
+
+  // Get orders.
+  getAdminOrders: (token, opts = {}) =>
+    request("/admin/orders", {
+      ...opts,
+      token,
+    }),
+
+  // Get users.
+  getAdminUsers: (token, opts = {}) =>
+    request("/admin/users", {
+      ...opts,
+      token,
+    }),
+
+  // Check Admin API health.
+  getAdminHealth: (token) =>
+    request("/admin/health", {
+      token,
+    }),
+
+  // ========================================
+  // PRODUCTS
+  // ========================================
+
+  getProducts: (opts) => request("/products", opts),
+
+  getProduct: (id, opts) => request(`/products/${enc(id)}`, opts),
+
+  getRelated: (id, opts) => request(`/products/${enc(id)}/related`, opts),
+
+  getReviews: (id, opts) => request(`/products/${enc(id)}/reviews`, opts),
+
+  createReview: (id, review, token) =>
+    request(`/products/${enc(id)}/reviews`, {
+      method: "POST",
+      body: json(review),
+      token,
+    }),
+
+  // ========================================
+  // SHOPPING CART
+  // ========================================
+
+  quote: (items, promoCode, opts) =>
+    request("/cart/quote", {
+      method: "POST",
+      body: json({
+        items,
+        promoCode,
+      }),
+      ...opts,
+    }),
+
+  // ========================================
+  // ORDERS
+  // ========================================
+
+  createOrder: (payload, token) =>
+    request("/orders", {
+      method: "POST",
+      body: json(payload),
+      token,
+    }),
+
+  getReceipt: (id, receiptToken, token) =>
+    request(`/orders/${enc(id)}`, {
+      token,
+      headers: receiptToken ? { "x-receipt-token": receiptToken } : {},
+    }),
+
+  downloadReceipt: (id, { receiptToken, token } = {}) => {
+    if (!id || (!receiptToken && !token)) {
+      throw new ApiError("Order ID and receipt access are required", 400);
+    }
+
+    return download(`/orders/${enc(id)}/receipt`, {
+      receiptToken,
+      token,
+    });
+  },
+
+  cancelOrder: (id, { receiptToken, token } = {}) =>
+    request(`/orders/${enc(id)}/cancel`, {
+      method: "PATCH",
+      token,
+      headers: receiptToken ? { "x-receipt-token": receiptToken } : {},
+    }),
+
+  // ========================================
+  // USER ACCOUNT
+  // ========================================
+
+  getMe: (token) =>
+    request("/me", {
+      token,
+    }),
+
+  getMyOrders: (token, opts) =>
+    request("/me/orders", {
+      token,
+      ...opts,
+    }),
+
+  // ========================================
+  // FAVORITES
+  // ========================================
+
+  getFavorites: (token) =>
+    request("/me/favorites", {
+      token,
+    }),
+
+  mergeFavorites: (productIds, token) =>
+    request("/me/favorites", {
+      method: "PUT",
+      body: json({
+        productIds,
+      }),
+      token,
+    }),
+
+  addFavorite: (id, token) =>
+    request(`/me/favorites/${enc(id)}`, {
+      method: "POST",
+      token,
+    }),
+
+  removeFavorite: (id, token) =>
+    request(`/me/favorites/${enc(id)}`, {
+      method: "DELETE",
+      token,
+    }),
+
+  // ========================================
+  // IDENTITY LINKING
+  // ========================================
+
+  linkIdentity: (otherToken, token) =>
+    request("/me/link-identity", {
+      method: "POST",
+      body: json({
+        token: otherToken,
+      }),
+      token,
+    }),
+
+  // ========================================
+  // ORDER CLAIMS
+  // ========================================
+
+  requestOrderClaim: (orderId, token) =>
+    request("/me/orders/claim/request", {
+      method: "POST",
+      body: json({
+        orderId,
+      }),
+      token,
+    }),
+
+  confirmOrderClaim: (orderId, code, token) =>
+    request("/me/orders/claim/confirm", {
+      method: "POST",
+      body: json({
+        orderId,
+        code,
+      }),
+      token,
+    }),
+
+  // ========================================
+  // NEWSLETTER
+  // ========================================
+
+  subscribeNewsletter: (email) =>
+    request("/newsletter", {
+      method: "POST",
+      body: json({
+        email,
+      }),
+    }),
 };
+
+// ========================================
+// FILE DOWNLOAD UTILITY
+// ========================================
+
+export function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+
+  a.href = url;
+  a.download = filename;
+
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
