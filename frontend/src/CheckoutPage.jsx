@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { shoesAPI } from "./api";
 import { useAuth } from "./auth/AuthContext";
+import ProductImage from "./components/ProductImage";
 import { useToast } from "./components/Toast";
 import useDocumentMeta from "./hooks/useDocumentMeta";
 import { cents } from "./lib/format";
@@ -10,6 +11,7 @@ import { getSavedPromo, savePromo } from "./lib/promo";
 import { KEYS } from "./lib/storage";
 import { validateCheckout } from "./lib/validation";
 import "./CheckoutPage.css";
+import "./commerce/commerce.css";
 
 const COUNTRIES = [
   ["UA", "Ukraine"], ["US", "United States"], ["GB", "United Kingdom"], ["DE", "Germany"], ["FR", "France"],
@@ -96,7 +98,14 @@ export default function CheckoutPage({ cart = [], config }) {
   }
 
   const lines = useMemo(
-    () => items.map((i) => ({ id: Number(i.id), size: Number(i.size), color: i.color || undefined, quantity: Number(i.quantity) || 1 })),
+    () =>
+      items.map((i) => ({
+        id: Number(i.id),
+        size: Number(i.size),
+        color: i.color || undefined,
+        quantity: Number(i.quantity) || 1,
+        ...(i.designId ? { designId: i.designId } : {}),
+      })),
     [items]
   );
 
@@ -153,6 +162,25 @@ export default function CheckoutPage({ cart = [], config }) {
     }
   }
 
+  const [hold,setHold] = useState(null);
+  const [reserving,setReserving] = useState(false);
+  const [now,setNow] = useState(()=>Date.now());
+  useEffect(()=>{const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[]);
+  const held = hold && hold.signature === JSON.stringify(lines) && new Date(hold.expiresAt).getTime()>now;
+  async function reserveSizes(token) {
+    if (held) return hold;
+    const key=crypto.randomUUID();
+    const result=await shoesAPI.reserve(key,lines,token);
+    const next={...result.reservation,signature:JSON.stringify(lines)};
+    setHold(next);
+    return next;
+  }
+  async function requestHold() {
+    setReserving(true);setServerError('');
+    try { await reserveSizes(user?await getToken():null); }
+    catch(e){setServerError(e.message);}
+    finally{setReserving(false);}
+  }
   async function placeOrder(e) {
     e.preventDefault();
     if (placing || !ready) return;
@@ -165,6 +193,7 @@ export default function CheckoutPage({ cart = [], config }) {
     setPlacing(true);
     try {
       const token = user ? await getToken() : null;
+      const reservation = await reserveSizes(token);
       const result = await shoesAPI.createOrder(
         {
           customer: {
@@ -182,6 +211,7 @@ export default function CheckoutPage({ cart = [], config }) {
           items: lines,
           promoCode,
           paymentMethod,
+          reservationKey: reservation.id,
         },
         token
       );
@@ -226,6 +256,11 @@ export default function CheckoutPage({ cart = [], config }) {
 
   return (
     <main className="checkout-page" id="main-content">
+      <section className="commerce-panel" aria-label="Stock reservation">
+        <h2>Secure your sizes</h2>
+        <p role="status">{held ? `Your sizes are reserved for ${Math.max(0,Math.ceil((new Date(hold.expiresAt)-now)/60000))} more minutes.` : 'Reserve your selected sizes for 10 minutes while you complete checkout.'}</p>
+        <button type="button" disabled={held || reserving || placing} onClick={requestHold}>{reserving?'Reserving…':held?'Sizes reserved':'Reserve my sizes'}</button>
+      </section>
       <div className="checkout-container">
         <button type="button" className="checkout-back" onClick={() => navigate(-1)} disabled={placing}>
           ← Back
@@ -354,7 +389,7 @@ export default function CheckoutPage({ cart = [], config }) {
             <h2>Order Summary</h2>
             {items.map((item) => (
               <div className="checkout-item" key={`${item.id}-${item.size}-${item.color}`}>
-                <img src={item.image} alt={item.name} width="70" height="70" loading="lazy" />
+                <ProductImage src={item.image} alt={item.name} width="70" height="70" />
                 <div>
                   <strong>{item.name}</strong>
                   <small>

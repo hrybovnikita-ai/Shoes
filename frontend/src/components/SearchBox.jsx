@@ -1,18 +1,27 @@
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { shoesAPI } from "../api";
+import ProductImage from "./ProductImage";
 
 // Search with live product suggestions (keyboard accessible combobox).
-export default function SearchBox({ products, value, onChange, onSubmit, onPick, id = "search-input", placeholder = "Search sneakers..." }) {
+export default function SearchBox({ value, onChange, onSubmit, onPick, id = "search-input", placeholder = "Search sneakers..." }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const listId = useId();
   const q = value.trim().toLowerCase();
 
-  const suggestions = useMemo(() => {
-    if (q.length < 1) return [];
-    return products
-      .filter((p) => `${p.name} ${p.brand} ${p.category} ${p.color}`.toLowerCase().includes(q))
-      .slice(0, 6);
-  }, [products, q]);
+  const [suggestions,setSuggestions]=useState([]);
+  const [status,setStatus]=useState('');
+  useEffect(()=>{
+    const controller=new AbortController();
+    const timer=setTimeout(async()=>{
+      if(!q){setSuggestions([]);setStatus('');return;}
+      setStatus('Searching…');
+      try{const r=await shoesAPI.search({q,limit:6},{signal:controller.signal});if(!controller.signal.aborted){setSuggestions(r.products);setStatus(r.products.length?'':'No matching products');}}
+      catch(e){if(!controller.signal.aborted){setSuggestions([]);setStatus(e.message);}}
+    },250);
+    return()=>{clearTimeout(timer);controller.abort();};
+  },[q]);
+  const highlight=(name)=>{const at=name.toLowerCase().indexOf(q);return at<0?name:<>{name.slice(0,at)}<mark>{name.slice(at,at+q.length)}</mark>{name.slice(at+q.length)}</>;};
 
   const show = open && suggestions.length > 0;
 
@@ -48,7 +57,7 @@ export default function SearchBox({ products, value, onChange, onSubmit, onPick,
               setActive((a) => Math.max(-1, a - 1));
             } else if (e.key === "Enter") {
               e.preventDefault();
-              if (show && active >= 0) onPick(suggestions[active]);
+              if (show && suggestions[active]) onPick(suggestions[active]);
               else onSubmit?.(value);
               setOpen(false);
             } else if (e.key === "Escape") {
@@ -57,6 +66,7 @@ export default function SearchBox({ products, value, onChange, onSubmit, onPick,
           }}
         />
       </label>
+      {open && status && <p className="commerce-availability" role="status">{status}</p>}
       {show && (
         <ul className="search-suggestions" id={listId} role="listbox">
           {suggestions.map((p, i) => (
@@ -72,9 +82,9 @@ export default function SearchBox({ products, value, onChange, onSubmit, onPick,
                 setOpen(false);
               }}
             >
-              <img src={p.image} alt="" loading="lazy" width="40" height="40" />
+              <ProductImage src={p.image} alt="" width="40" height="40" />
               <span>
-                <strong>{p.name}</strong>
+                <strong>{highlight(p.name)}</strong>
                 <small>
                   {p.brand} · {p.category}
                 </small>

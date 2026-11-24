@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import useInventory from "../commerce/useInventory";
 import { money, SIZES, stockInfo } from "../lib/format";
+import ProductImage from "./ProductImage";
 
 export default function QuickView({ product, onClose, onAdd, onOpen, favorite, onFavorite }) {
+  const inventory = useInventory(product.id);
   const [size, setSize] = useState(null);
   const [qty, setQty] = useState(1);
   const [error, setError] = useState("");
@@ -20,7 +23,7 @@ export default function QuickView({ product, onClose, onAdd, onOpen, favorite, o
     };
   }, [onClose]);
 
-  const stock = product.fromApi ? Number(product.stock) : 10;
+  const stock = inventory.data?.managed ? inventory.data.variants.filter(v=>v.size===size && v.color===product.color).reduce((s,v)=>s+v.available,0) : product.fromApi ? Number(product.stock) : 0;
   const info = stockInfo(product.fromApi ? product.stock : null);
   const max = Math.max(1, Math.min(10, stock));
 
@@ -31,7 +34,7 @@ export default function QuickView({ product, onClose, onAdd, onOpen, favorite, o
           ✕
         </button>
         <div className="modal-photo">
-          <img src={product.image} alt={product.name} />
+          <ProductImage src={product.image} alt={product.name} loading="eager" />
         </div>
         <div className="modal-content">
           <span className="eyebrow">
@@ -44,12 +47,14 @@ export default function QuickView({ product, onClose, onAdd, onOpen, favorite, o
           </div>
           {product.fromApi && <p className={`stock-pill stock-${info.tone}`}>{info.label}</p>}
           <p className="muted">Color: {product.color}</p>
+          {inventory.error && <p role="alert">{inventory.error}</p>}
           <fieldset className="qv-sizes">
             <legend>Select EU size</legend>
             <div className="shoe-size-grid">
               {SIZES.map((s) => (
                 <button
                   key={s}
+                  disabled={inventory.loading || Boolean(inventory.error) || (inventory.data?.managed && !inventory.data.variants.some(v=>v.size===s && v.color===product.color && v.available>0))}
                   type="button"
                   className={size === s ? "active" : ""}
                   aria-pressed={size === s}
@@ -85,7 +90,7 @@ export default function QuickView({ product, onClose, onAdd, onOpen, favorite, o
           <button
             type="button"
             className="primary wide"
-            disabled={stock === 0}
+            disabled={stock === 0 || inventory.loading || Boolean(inventory.error) || qty>stock}
             onClick={() => {
               if (size == null) return setError("Please select your size.");
               onAdd(product, { size, color: product.color, quantity: qty });

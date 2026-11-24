@@ -42,11 +42,12 @@ test("health, config and API index", async () => {
 
 test("product listing, search, filters, sorting, details, related", async () => {
   const all = await api(base, "GET", "/products");
-  assert.equal(all.body.count, 6);
+  assert.equal(all.body.count, 50);
   const s = await api(base, "GET", "/products?search=jordan");
-  assert.deepEqual(s.body.products.map((p) => p.id), [3]);
+  assert.ok(s.body.products.some((p) => /jordan/i.test(p.name)));
   const cat = await api(base, "GET", "/products?category=Running");
-  assert.deepEqual(cat.body.products.map((p) => p.id).sort(), [1, 2]);
+  assert.ok(cat.body.products.length >= 2);
+  assert.ok(cat.body.products.every((p) => p.category === "Running"));
   const asc = await api(base, "GET", "/products?sort=price-asc");
   const prices = asc.body.products.map((p) => p.price);
   assert.deepEqual(prices, [...prices].sort((a, b) => a - b));
@@ -54,12 +55,13 @@ test("product listing, search, filters, sorting, details, related", async () => 
   assert.ok(range.body.products.every((p) => p.price >= 100 && p.price <= 160));
   const one = await api(base, "GET", "/products/3");
   assert.equal(one.body.product.name, "Nike Air Jordan");
+  assert.equal(one.body.product.brand, "Jordan");
   assert.equal((await api(base, "GET", "/products/999")).status, 404);
   assert.equal((await api(base, "GET", "/products/abc")).status, 404);
   const rel = await api(base, "GET", "/products/3/related");
   assert.equal(rel.body.products.length, 4);
   assert.ok(!rel.body.products.some((p) => p.id === 3));
-  assert.equal(rel.body.products[0].category, "Lifestyle");
+  assert.ok(rel.body.products.every((p) => p.category === "Basketball" || p.brand === "Jordan"));
 });
 
 test("cart quote uses DB prices and validates promo codes", async () => {
@@ -89,7 +91,7 @@ test("guest demo order: server pricing, stock, receipt token, PDF, cancel", asyn
   assert.equal(o.status, "DEMO_CONFIRMED");
   assert.equal(o.paymentStatus, "demo");
   assert.equal(o.paymentProcessed, false);
-  assert.equal(o.items[0].image.startsWith("https://"), true);
+  assert.equal(o.items[0].image.startsWith("/images/products/"), true);
   assert.equal((await api(base, "GET", "/products/5")).body.product.stock, before - 2);
 
   const tok = r.body.receiptToken;
@@ -142,7 +144,7 @@ test("signed-in orders appear in My Orders, isolated per user (zero-orders fix)"
   assert.equal(mine.status, 200);
   assert.equal(mine.body.count, 1);
   assert.equal(mine.body.orders[0].id, a.body.order.id);
-  assert.equal(mine.body.orders[0].items[0].name, "Converse All Star");
+  assert.match(mine.body.orders[0].items[0].name, /Converse/i);
 
   const theirs = await api(base, "GET", "/me/orders", { token: bob });
   assert.equal(theirs.body.count, 0);

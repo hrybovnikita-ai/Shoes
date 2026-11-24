@@ -3,6 +3,7 @@ import { calculateTotals, FREE_SHIPPING_THRESHOLD_CENTS, isValidPromoCode, norma
 import { cents } from "../lib/format";
 import { getSavedPromo, savePromo } from "../lib/promo";
 import "./ShoppingCart.css";
+import ProductImage from "./ProductImage";
 
 export default function ShoppingCart({ isOpen, onClose, cart = [], onUpdate, onRemove, onCheckout }) {
   const [promoInput, setPromoInput] = useState(getSavedPromo);
@@ -94,7 +95,7 @@ export default function ShoppingCart({ isOpen, onClose, cart = [], onUpdate, onR
               const qty = Number(item.quantity) || 1;
               return (
                 <div className="cart-product" key={`${item.id}-${item.size ?? ""}-${item.color ?? ""}`} data-testid="cart-line">
-                  <img src={item.image} alt={item.name} loading="lazy" width="90" height="90" />
+                  <ProductImage src={item.image} alt={item.name} width="90" height="90" />
                   <div className="cart-product-info">
                     <h3>{item.name}</h3>
                     <p>

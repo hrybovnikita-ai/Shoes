@@ -586,9 +586,12 @@
 
 .app .product-photo {
   overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .app .product-photo img {
+  object-fit: contain;
+  object-position: center;
   transition: transform 0.45s ease;
 }
 
@@ -1631,9 +1634,37 @@
 }
 
 :root[data-theme="light"] .hero {
-  background: radial-gradient(circle at 75% 50%, #e9ffc4, #f4f5f7 55%, #fff);
+  background:
+    radial-gradient(circle at 86% 52%, #fce8e4 0%, #f6f0ef 36%, transparent 58%),
+    radial-gradient(circle at 22% 45%, #e9ffc4, #f4f5f7 52%, #fff);
   border-color: var(--line);
   color: #111;
+}
+
+:root[data-theme="light"] .hero-image {
+  mix-blend-mode: normal;
+  opacity: 1;
+  filter: none;
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme="light"] .hero p {
+  color: #4a4a4a;
+}
+
+:root[data-theme="light"] .hero-stats {
+  color: #5c5c5c;
+}
+
+:root[data-theme="light"] .hero-stats strong {
+  color: #111;
+}
+
+:root[data-theme="light"] .app .hero button:not(.primary) {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: #d4d4d4;
+  color: #1a1a1a;
 }
 
 :root[data-theme="light"] .search-box,

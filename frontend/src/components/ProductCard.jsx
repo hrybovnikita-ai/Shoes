@@ -1,4 +1,5 @@
-import { imageSrcSet, money, stockInfo } from "../lib/format";
+import { money, stockInfo } from "../lib/format";
+import ProductImage from "./ProductImage";
 
 export default function ProductCard({ product, favorite, onFavorite, onOpen, onQuickView }) {
   const stock = stockInfo(product.fromApi ? product.stock : null);
@@ -17,13 +18,10 @@ export default function ProductCard({ product, favorite, onFavorite, onOpen, onQ
           }}
           aria-label={`View ${product.name}`}
         >
-          <img
+          <ProductImage
             src={product.image}
-            srcSet={imageSrcSet(product.image)}
             sizes="(max-width: 640px) 50vw, (max-width: 1100px) 33vw, 25vw"
             alt={product.name}
-            loading="lazy"
-            decoding="async"
             width="600"
             height="600"
           />
@@ -46,7 +44,12 @@ export default function ProductCard({ product, favorite, onFavorite, onOpen, onQ
 
       <div className="product-details">
         <div className="product-meta">
-          <span>{product.brand}</span>
+          <span className="product-brand-line">
+            <span className="brand-chip" aria-hidden="true">
+              {String(product.brand || "SH").slice(0, 2).toUpperCase()}
+            </span>
+            {product.brand}
+          </span>
           {product.rating != null && (
             <span title="Store rating">
               ★ {product.rating}

@@ -14,7 +14,8 @@
     "migrate": "node scripts/migrate.js up",
     "migrate:status": "node scripts/migrate.js status",
     "migrate:dry-run": "node scripts/migrate.js dry-run",
-    "seed": "node scripts/migrate.js seed"
+    "seed": "node scripts/migrate.js seed",
+    "sync:images": "node scripts/sync-product-images.js"
   },
   "dependencies": {
     "@clerk/backend": "^3.31.3",

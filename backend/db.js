@@ -51,30 +51,149 @@ const pool = {
 
 // Seeds the original demo catalog. ON CONFLICT DO NOTHING: never overwrites
 // existing product rows (prices / stock edited in the DB are preserved).
-async function seedProducts(client = pool) {
-  for (const p of products) {
-    await client.query(
-      `INSERT INTO shoes_products
-         (id, name, brand, category, price, old_price, color, rating, stock, image)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-       ON CONFLICT (id) DO NOTHING`,
-      [p.id, p.name, p.brand, p.category, p.price, p.oldPrice, p.color, p.rating, p.stock, p.image]
-    );
+async function seedVariants(client = pool) {
+  const table = await client.query("SELECT to_regclass('shoes_variants') AS t");
+  if (!table.rows[0].t) return;
+  const { rows } = await client.query("SELECT id, stock, color FROM shoes_products ORDER BY id");
+  for (const p of rows) {
+    const sizes = [38, 39, 40, 41, 42, 43, 44];
+    let remaining = Number(p.stock) || 0;
+    for (let i = 0; i < sizes.length; i++) {
+      const qty = i === sizes.length - 1 ? remaining : Math.min(remaining, Math.max(1, Math.floor((p.stock || 0) / sizes.length)));
+      remaining -= qty;
+      if (qty <= 0) continue;
+      await client.query(
+        `INSERT INTO shoes_variants(product_id, size, color, stock)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (product_id, size, color) DO NOTHING`,
+        [p.id, sizes[i], p.color, qty]
+      );
+    }
   }
 }
 
+async function catalogColumnsReady(client) {
+  const { rows } = await client.query(
+    `SELECT 1 FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='shoes_products' AND column_name='slug' LIMIT 1`
+  );
+  return rows.length > 0;
+}
+
+async function seedProducts(client = pool) {
+  const expanded = await catalogColumnsReady(client);
+  const customizable = products.filter((p) => p.customizable).map((p) => p.id);
+  for (const p of products) {
+    if (expanded) {
+      await client.query(
+        `INSERT INTO shoes_products
+           (id, slug, name, brand, category, gender, price, old_price, color, colors, materials, description,
+            size_eu, size_us, size_uk, images, rating, stock, image, customizable)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13::jsonb,$14::jsonb,$15::jsonb,$16::jsonb,$17,$18,$19,$20)
+         ON CONFLICT (id) DO NOTHING`,
+        [
+          p.id,
+          p.slug,
+          p.name,
+          p.brand,
+          p.category,
+          p.gender,
+          p.price,
+          p.oldPrice,
+          p.color,
+          JSON.stringify(p.colors || [p.color]),
+          p.materials,
+          p.description,
+          JSON.stringify(p.sizeEu),
+          JSON.stringify(p.sizeUs),
+          JSON.stringify(p.sizeUk),
+          JSON.stringify(p.images || [p.image]),
+          p.rating,
+          p.stock,
+          p.image,
+          Boolean(p.customizable),
+        ]
+      );
+    } else {
+      await client.query(
+        `INSERT INTO shoes_products
+           (id, name, brand, category, price, old_price, color, rating, stock, image)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         ON CONFLICT (id) DO NOTHING`,
+        [p.id, p.name, p.brand, p.category, p.price, p.oldPrice, p.color, p.rating, p.stock, p.image]
+      );
+    }
+  }
+  if (customizable.length) {
+    try {
+      await client.query("UPDATE shoes_products SET customizable = TRUE WHERE id = ANY($1::int[])", [customizable]);
+    } catch (error) {
+      if (error.code !== "42703") throw error;
+    }
+  }
+  if (expanded) await seedVariants(client);
+}
+
+/** Updates only image + images JSON from the in-code catalog (does not change prices/stock). */
+async function syncProductImages(client = pool) {
+  const expanded = await catalogColumnsReady(client);
+  let count = 0;
+  for (const p of products) {
+    const images = JSON.stringify(p.images || [p.image]);
+    if (expanded) {
+      const { rowCount } = await client.query(
+        `UPDATE shoes_products SET image = $2, images = $3::jsonb WHERE id = $1`,
+        [p.id, p.image, images]
+      );
+      if (rowCount) count += rowCount;
+    } else {
+      const { rowCount } = await client.query(`UPDATE shoes_products SET image = $2 WHERE id = $1`, [p.id, p.image]);
+      if (rowCount) count += rowCount;
+    }
+  }
+  return count;
+}
+
+function parseJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function productRow(p) {
+  const colors = parseJsonArray(p.colors);
+  const images = parseJsonArray(p.images);
   return {
     id: p.id,
+    slug: p.slug || null,
     name: p.name,
     brand: p.brand,
     category: p.category,
+    gender: p.gender || null,
+    description: p.description || null,
+    materials: p.materials || null,
     price: Number(p.price),
     oldPrice: p.old_price == null ? null : Number(p.old_price),
     color: p.color,
+    colors: colors.length ? colors : p.color ? [p.color] : [],
+    sizes: {
+      eu: parseJsonArray(p.size_eu),
+      us: parseJsonArray(p.size_us),
+      uk: parseJsonArray(p.size_uk),
+    },
     rating: p.rating == null ? null : Number(p.rating),
     stock: p.stock,
+    inventoryManaged: Boolean(p.inventory_managed),
+    customizable: Boolean(p.customizable),
     image: p.image,
+    images: images.length ? images : p.image ? [p.image] : [],
     ...(p.review_count != null ? { reviewCount: Number(p.review_count) } : {}),
     ...(p.review_avg != null ? { reviewAverage: Number(p.review_avg) } : {}),
     ...(p.units_sold != null ? { unitsSold: Number(p.units_sold) } : {}),
@@ -124,9 +243,24 @@ function orderRow(o) {
     paidAt: o.paid_at ? new Date(o.paid_at).toISOString() : null,
     cancelledAt: o.cancelled_at ? new Date(o.cancelled_at).toISOString() : null,
     canCancel: CANCELLABLE_STATUSES.has(o.status) && paymentStatus !== "paid",
+    fulfillmentStatus: o.fulfillment_status || "order_confirmed",
+    trackingNumber: o.tracking_number || null,
+    carrier: o.carrier || null,
+    estimatedDeliveryAt: o.estimated_delivery_at ? new Date(o.estimated_delivery_at).toISOString() : null,
+    trackingSimulated: Boolean(o.tracking_simulated),
   };
 }
 
 module.exports = {
   getPool,
-  DbNotConfiguredError, pool, seedProducts, productRow, orderRow, parseItems, sslConfig, CANCELLABLE_STATUSES };
+  DbNotConfiguredError,
+  pool,
+  seedProducts,
+  seedVariants,
+  syncProductImages,
+  productRow,
+  orderRow,
+  parseItems,
+  sslConfig,
+  CANCELLABLE_STATUSES,
+};

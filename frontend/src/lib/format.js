@@ -9,12 +9,32 @@ export function stockInfo(stock) {
   return { label: "In stock", tone: "in" };
 }
 
-// Unsplash supports on-the-fly resizing via the w= parameter.
+export const PRODUCT_IMAGE_FALLBACK = "/images/products/fallback.webp";
+
+export function productImageSrc(url) {
+  if (typeof url !== "string" || !url.trim()) return PRODUCT_IMAGE_FALLBACK;
+  const u = url.trim();
+  if (u.startsWith("/")) return u;
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  return `/${u.replace(/^\//, "")}`;
+}
+
+/** Responsive srcset for local WebP assets and legacy remote URLs. */
 export function imageSrcSet(url) {
-  if (typeof url !== "string" || !url.includes("images.unsplash.com")) return undefined;
-  const base = url.replace(/([?&])w=\d+/, "$1").replace(/[?&]$/, "");
-  const sep = base.includes("?") ? "&" : "?";
-  return [400, 700, 1000].map((w) => `${base}${sep}w=${w}&auto=format&q=75 ${w}w`).join(", ");
+  const src = productImageSrc(url);
+  if (src.includes("/images/products/") && src.endsWith(".webp") && !src.includes("-400") && !src.includes("-800")) {
+    const base = src.replace(/\.webp$/, "");
+    return `${base}-400.webp 400w, ${base}-800.webp 800w, ${src} 1200w`;
+  }
+  if (src.includes("images.unsplash.com")) {
+    const base = src.replace(/([?&])w=\d+/, "$1").replace(/[?&]$/, "");
+    const sep = base.includes("?") ? "&" : "?";
+    return [400, 700, 1000].map((w) => `${base}${sep}w=${w}&auto=format&q=75 ${w}w`).join(", ");
+  }
+  if (src.includes("images.pexels.com")) {
+    return `${src.replace(/w=\d+/, "w=400")} 400w, ${src.replace(/w=\d+/, "w=800")} 800w, ${src} 1200w`;
+  }
+  return undefined;
 }
 
 export const SIZES = Array.from({ length: 11 }, (_, i) => i + 36); // EU 36–46

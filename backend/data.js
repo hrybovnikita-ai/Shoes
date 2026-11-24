@@ -1,85 +1,9 @@
-const products = [
-  {
-    id: 1,
-    name: "Nike Air Max 270",
-    brand: "Nike",
-    category: "Running",
-    price: 150,
-    oldPrice: 185,
-    color: "Red",
-    rating: 4.9,
-    stock: 20,
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=900",
-  },
-  {
-    id: 2,
-    name: "Adidas Ultraboost",
-    brand: "Adidas",
-    category: "Running",
-    price: 180,
-    oldPrice: 220,
-    color: "White",
-    rating: 4.8,
-    stock: 15,
-    image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=900",
-  },
-  {
-    id: 3,
-    name: "Nike Air Jordan",
-    brand: "Nike",
-    category: "Lifestyle",
-    price: 210,
-    oldPrice: 250,
-    color: "Black",
-    rating: 4.9,
-    stock: 12,
-    image: "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=900",
-  },
-  {
-    id: 4,
-    name: "New Balance Classic",
-    brand: "New Balance",
-    category: "Lifestyle",
-    price: 135,
-    oldPrice: 165,
-    color: "Grey",
-    rating: 4.7,
-    stock: 18,
-    image: "https://images.unsplash.com/photo-1539185441755-769473a23570?w=900",
-  },
-  {
-    id: 5,
-    name: "Converse All Star",
-    brand: "Converse",
-    category: "Casual",
-    price: 85,
-    oldPrice: 110,
-    color: "Black",
-    rating: 4.8,
-    stock: 25,
-    image: "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=900",
-  },
-  {
-    id: 6,
-    name: "Nike Street Edition",
-    brand: "Nike",
-    category: "Lifestyle",
-    price: 165,
-    oldPrice: 195,
-    color: "White",
-    rating: 4.6,
-    stock: 14,
-    image: "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=900",
-  },
-];
+"use strict";
+const { products } = require("./data/catalog");
 
 const allowedSizes = [
-  // US sizes
   7, 8, 8.5, 9, 9.5, 10, 11, 12,
-
-  // EU sizes
-  36, 37, 38, 39, 40, 41,
-  42, 43, 44, 45, 46,
+  36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,
 ];
 
 module.exports = { products, allowedSizes };

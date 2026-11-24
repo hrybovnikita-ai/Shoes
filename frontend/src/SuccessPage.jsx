@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { saveBlob, shoesAPI } from "./api";
 import { useAuth } from "./auth/AuthContext";
+import ProductImage from "./components/ProductImage";
 import { LinesSkeleton } from "./components/Skeleton";
 import useDocumentMeta from "./hooks/useDocumentMeta";
 import { formatDate, money } from "./lib/format";
@@ -202,7 +203,7 @@ export default function SuccessPage({ onComplete }) {
             </div>
             {order.items?.map((item, i) => (
               <div className="checkout-item" key={`${item.id}-${i}`}>
-                {item.image && <img src={item.image} alt={item.name} width="64" height="64" loading="lazy" />}
+                {item.image && <ProductImage src={item.image} alt={item.name} width="64" height="64" />}
                 <div>
                   <strong>{item.name}</strong>
                   <small>

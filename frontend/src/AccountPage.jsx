@@ -1,3 +1,5 @@
+import AccountCommerce from "./commerce/AccountCommerce";
+import DesignsPanel from "./account/DesignsPanel";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, updateProfile } from "firebase/auth";
@@ -5,6 +7,7 @@ import { sendEmailVerification, sendPasswordResetEmail, signInWithEmailAndPasswo
 import { saveBlob, shoesAPI } from "./api";
 import { useAuth } from "./auth/AuthContext";
 import { auth as firebaseAuth, googleProvider } from "./firebase";
+import ProductImage from "./components/ProductImage";
 import { LinesSkeleton } from "./components/Skeleton";
 import { useToast } from "./components/Toast";
 import useDocumentMeta from "./hooks/useDocumentMeta";
@@ -18,7 +21,7 @@ function paymentLabel(o) {
   return { paid: "Paid (Stripe test)", unpaid: "Awaiting payment", failed: "Failed", expired: "Expired" }[o.paymentStatus] || o.paymentStatus;
 }
 
-function OrderCard({ order, onCancel, onReceipt, busy }) {
+function OrderCard({ order, onCancel, onReceipt, onTrack, busy }) {
   const [open, setOpen] = useState(false);
   const items = Array.isArray(order.items) ? order.items : [];
   const units = items.reduce((s, i) => s + (Number(i.quantity) || 1), 0);
@@ -33,7 +36,7 @@ function OrderCard({ order, onCancel, onReceipt, busy }) {
       </div>
       <div className="order-thumbs">
         {items.slice(0, 4).map((i, idx) => (
-          <img key={`${i.id}-${idx}`} src={i.image} alt={i.name} width="56" height="56" loading="lazy" />
+          <ProductImage key={`${i.id}-${idx}`} src={i.image} alt={i.name} width="56" height="56" />
         ))}
         <span className="muted">
           {units} item{units === 1 ? "" : "s"} · {items.map((i) => i.name).slice(0, 2).join(", ")}
@@ -54,6 +57,9 @@ function OrderCard({ order, onCancel, onReceipt, busy }) {
         <button type="button" className="account-secondary" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
           {open ? "Hide details" : "View details"}
         </button>
+        <button type="button" className="account-secondary" onClick={() => onTrack(order)}>
+          Track delivery
+        </button>
         <button type="button" className="account-secondary" onClick={() => onReceipt(order)} disabled={busy === `pdf-${order.id}`}>
           {busy === `pdf-${order.id}` ? "Preparing…" : "⬇ PDF receipt"}
         </button>
@@ -67,7 +73,7 @@ function OrderCard({ order, onCancel, onReceipt, busy }) {
         <div className="account-order-details">
           {items.map((item, index) => (
             <div className="order-line" key={`${item.id}-${index}`}>
-              <img src={item.image} alt="" width="48" height="48" loading="lazy" />
+              <ProductImage src={item.image} alt="" width="48" height="48" />
               <span>
                 <strong>{item.name}</strong>
                 <small>
@@ -430,13 +436,22 @@ export default function AccountPage({ products = [], favorites = [], onToggleFav
           ) : (
             <div className="account-orders">
               {orders.list.map((o) => (
-                <OrderCard key={o.id} order={o} onCancel={cancelOrder} onReceipt={downloadReceipt} busy={busy} />
+                <OrderCard
+                  key={o.id}
+                  order={o}
+                  onCancel={cancelOrder}
+                  onReceipt={downloadReceipt}
+                  onTrack={(order) => navigate(`/orders/${order.id}/tracking`)}
+                  busy={busy}
+                />
               ))}
             </div>
           )}
           <ClaimOrder getToken={getToken} onClaimed={refresh} enabled={Boolean(config?.features?.orderClaims)} />
         </section>
 
+        <DesignsPanel onOpenCustomizer={(productId) => navigate(`/customizer/${productId}`)} />
+        <AccountCommerce />
         <section className="account-panel wide" id="favorites">
           <div className="panel-head">
             <h2>My Favorites ({favorites.length})</h2>
@@ -454,7 +469,7 @@ export default function AccountPage({ products = [], favorites = [], onToggleFav
             <div className="favorites-grid">
               {favoriteProducts.map((p) => (
                 <article className="favorite-card" key={p.id} data-testid="favorite-card">
-                  <img src={p.image} alt={p.name} width="300" height="220" loading="lazy" />
+                  <ProductImage src={p.image} alt={p.name} width="300" height="220" />
                   <div>
                     <small>{p.brand} · {p.category}</small>
                     <strong>{p.name}</strong>
