@@ -3,8 +3,11 @@ import { io } from "socket.io-client";
 import { shoesAPI } from "../api";
 
 function socketUrl() {
-  const api = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") || "http://localhost:5000";
-  return import.meta.env.VITE_SOCKET_URL || api;
+  if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL;
+  const fromApi = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "");
+  if (fromApi) return fromApi;
+  if (import.meta.env.DEV) return "http://localhost:5000";
+  return typeof window !== "undefined" ? window.location.origin : "";
 }
 
 export default function useOrderTracking(orderId, { getToken, enabled = true }) {

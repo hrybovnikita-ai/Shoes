@@ -34,7 +34,7 @@ Never put `sk_` or webhook secrets in the frontend.
 CLERK_SECRET_KEY=sk_test_…
 CLERK_PUBLISHABLE_KEY=pk_test_…          # optional mirror for scripts
 CLERK_WEBHOOK_SIGNING_SECRET=whsec_…
-CLERK_AUTHORIZED_PARTIES=http://localhost:5173,https://your-production-domain
+CLERK_AUTHORIZED_PARTIES=http://localhost:5173,http://127.0.0.1:5173,https://shoes-red-alpha.vercel.app,https://shoes.is-a.dev
 ```
 
 Also keep existing `FIREBASE_PROJECT_ID` / `GOOGLE_APPLICATION_CREDENTIALS` for legacy tokens.
@@ -45,7 +45,7 @@ Also keep existing `FIREBASE_PROJECT_ID` / `GOOGLE_APPLICATION_CREDENTIALS` for 
 
 1. Create application (Development first).
 2. **User & authentication** → enable Email + Password, Google OAuth, e-mail verification, password reset.
-3. **Domains** → allow your frontend origins (same as `CLERK_AUTHORIZED_PARTIES`).
+3. **Domains** → allow `https://shoes-red-alpha.vercel.app` and `https://shoes.is-a.dev` (and localhost for dev).
 4. **Webhooks** → endpoint `https://<api-host>/api/webhooks/clerk`, subscribe to `user.created`, `user.updated`, `user.deleted`; copy **Signing secret** to `CLERK_WEBHOOK_SIGNING_SECRET`.
 
 For local webhooks use [Clerk CLI](https://clerk.com/docs/guides/development/webhooks/syncing#with-a-local-tunnel) or ngrok → `http://localhost:5000/api/webhooks/clerk`.

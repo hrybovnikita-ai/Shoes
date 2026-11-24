@@ -8,6 +8,7 @@ const { pool, resetDb, startServer, api } = require("./helpers");
 const cors = require("../cors");
 
 const PROD = "https://shoes-red-alpha.vercel.app";
+const CUSTOM = "https://shoes.is-a.dev";
 let server;
 let base;
 
@@ -23,6 +24,7 @@ test.after(async () => {
 test("origin normalization and allowlist", () => {
   assert.equal(cors.normalizeOrigin(" https://Shoes-Red-Alpha.vercel.app/ "), PROD);
   assert.ok(cors.isAllowedOrigin(PROD, {}));
+  assert.ok(cors.isAllowedOrigin(CUSTOM, {}));
   assert.ok(cors.isAllowedOrigin("http://localhost:5173", {}));
   assert.ok(!cors.isAllowedOrigin("https://evil.example", {}));
   assert.ok(cors.isAllowedOrigin("https://shop.example", { FRONTEND_URL: "https://shop.example/" }));
@@ -58,6 +60,17 @@ test("GET /api/products returns JSON with ACAO for the production origin", async
   assert.match(r.headers.get("content-type"), /application\/json/);
   assert.equal(r.headers.get("access-control-allow-origin"), PROD);
   assert.ok(r.body.products.length > 0);
+});
+
+test("custom is-a.dev origin: preflight and JSON with ACAO", async () => {
+  const opt = await api(base, "OPTIONS", "/products", {
+    headers: { Origin: CUSTOM, "Access-Control-Request-Method": "GET" },
+  });
+  assert.equal(opt.status, 204);
+  assert.equal(opt.headers.get("access-control-allow-origin"), CUSTOM);
+  const r = await api(base, "GET", "/products", { headers: { Origin: CUSTOM } });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("access-control-allow-origin"), CUSTOM);
 });
 
 test("ACAO also on 404 and 401 JSON responses", async () => {

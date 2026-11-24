@@ -40,11 +40,21 @@ function getFirebaseAuth() {
   return firebaseAuth;
 }
 
+function isLocalDevParty(origin) {
+  return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin);
+}
+
 function authorizedParties() {
-  return (process.env.CLERK_AUTHORIZED_PARTIES || process.env.FRONTEND_URL || "")
+  const cors = require("../cors");
+  let fromEnv = (process.env.CLERK_AUTHORIZED_PARTIES || process.env.FRONTEND_URL || "")
     .split(",")
     .map((s) => s.trim().replace(/\/$/, ""))
     .filter(Boolean);
+  if (process.env.NODE_ENV === "production") {
+    fromEnv = fromEnv.filter((o) => !isLocalDevParty(o));
+  }
+  const httpsBuiltins = cors.DEFAULT_ORIGINS.filter((o) => o.startsWith("https://"));
+  return [...new Set([...fromEnv, ...httpsBuiltins])];
 }
 
 function getClerk() {
@@ -245,5 +255,6 @@ module.exports = {
   firebaseEnabled,
   clerkEnabled,
   PROVIDER_COLUMN,
+  authorizedParties,
   __setTestVerifier,
 };

@@ -13,6 +13,7 @@ const auth = require("./lib/auth");
 const stripe = require("./lib/stripe");
 const log = require("./lib/logger");
 const { pendingMigrations } = require("./lib/migrate");
+const cors = require("./cors");
 
 // ==========================================
 // HELPERS
@@ -33,11 +34,20 @@ const validPostal = (v) => typeof v === "string" && /^[A-Za-z0-9][A-Za-z0-9 -]{1
 const ORDER_ID_RE = /^SH-[0-9a-f-]{36}$/i;
 
 function frontendOrigin(req) {
-  const configured = (process.env.FRONTEND_URL || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const origin = req.get("origin");
-  if (origin && configured.includes(origin)) return origin;
-  if (origin && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) && process.env.NODE_ENV !== "production") return origin;
-  return configured[0] || "http://localhost:5173";
+  const configured = (process.env.FRONTEND_URL || "")
+    .split(",")
+    .map((s) => s.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+  const origin = typeof req.get("origin") === "string" ? req.get("origin").trim().replace(/\/+$/, "") : "";
+  if (origin && cors.isAllowedOrigin(origin)) return origin;
+  if (origin && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) && process.env.NODE_ENV !== "production") {
+    return origin;
+  }
+  if (configured.length) {
+    const hit = configured.find((c) => cors.isAllowedOrigin(c));
+    return hit || configured[0];
+  }
+  return process.env.NODE_ENV === "production" ? "https://shoes-red-alpha.vercel.app" : "http://localhost:5173";
 }
 
 function ownsOrder(user, order) {
