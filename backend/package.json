@@ -18,6 +18,8 @@
     "import:user-photos": "node scripts/import-user-photos.js",
     "resolve:photos": "node scripts/resolve-product-photos.js",
     "sync:images": "node scripts/generate-placeholder.js && node scripts/sync-product-images.js",
+    "sync:catalog-local": "node scripts/sync-catalog-local.js",
+    "build:image-credits": "node scripts/build-image-credits-json.js",
     "worker": "node commerce/worker.js"
   },
   "dependencies": {

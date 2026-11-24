@@ -39,11 +39,29 @@ const FILES = [
   "Boty Nike.jpg",
   "Athletic tennis shoes.jpg",
   "Reebok Indoor Sports Shoes.jpg",
+  "Puma suede red.jpg",
+  "Puma shoes.jpg",
+  "ComputershoeS1340051.jpg",
+  "New Balance 1906R.jpg",
+  "New Balance Fresh Foam shoe on display.jpg",
+  "New Balance 2002R.jpg",
+  "Asics Gel-NYC.jpg",
+  "Asics Gel-1130.jpg",
+  "Asics Gel-Kayano 14 Artizia.jpg",
+  "Nike Zoom Pegasus 38 running shoe.jpg",
+  "Converse One-Star.jpg",
+  "Nano 3.0.jpg",
+  "Reebok Nano 2.0.jpg",
+  "Trail running shoe.jpg",
+  "Salomon Outline Prism GTX tursko herre.jpg",
+  "Under Armour Black Ice.jpg",
+  "Under Armour Sohle .jpg",
+  "Air Jordan Shoe.jpg",
 ];
 
 const SKIP = /person|portrait|rally|memorial|wrestling|worn by|treadmill|olympic|fan fest|praying|pelota|sewing|stiletto|waterfall/i;
 
-function scoreFile(file, product) {
+function scoreFile(file, product = { brand: "", name: "" }) {
   const f = file.toLowerCase();
   if (SKIP.test(f)) return -1;
   if (!/\.(jpe?g|png|webp)$/i.test(file)) return -1;
@@ -76,4 +94,4 @@ function bestFileForProduct(product) {
   return bestScore >= 6 ? best : null;
 }
 
-module.exports = { FILES, SKIP, bestFileForProduct };
+module.exports = { FILES, SKIP, scoreFile, bestFileForProduct };

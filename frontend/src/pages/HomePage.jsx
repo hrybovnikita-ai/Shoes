@@ -15,6 +15,8 @@ const PRICE_RANGES = {
   o200: { label: "Over $200", test: (p) => p > 200 },
 };
 
+const PAGE_SIZE = 12;
+
 const SORTS = {
   featured: "Featured",
   "price-asc": "Price: Low to High",
@@ -23,6 +25,43 @@ const SORTS = {
   newest: "Newest",
   "best-selling": "Best Selling",
 };
+
+function CatalogPager({ page, pageSize, total, onPage }) {
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (total <= 0) return null;
+  const start = page * pageSize + 1;
+  const end = Math.min(total, (page + 1) * pageSize);
+  const go = (n) => {
+    if (n < 0 || n >= pages || n === page) return;
+    onPage(n);
+  };
+  return (
+    <nav className="catalog-pager" aria-label="Catalog pages">
+      <p className="catalog-pager-meta">
+        Showing {start}–{end} of {total} sneakers
+      </p>
+      <div className="catalog-pager-row">
+        <button type="button" className="pager-btn" disabled={page === 0} onClick={() => go(page - 1)} aria-label="Previous page">
+          <span aria-hidden="true">←</span>
+        </button>
+        {Array.from({ length: pages }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`pager-btn${i === page ? " is-active" : ""}`}
+            aria-current={i === page ? "page" : undefined}
+            onClick={() => go(i)}
+          >
+            {i + 1}
+          </button>
+        ))}
+        <button type="button" className="pager-btn" disabled={page >= pages - 1} onClick={() => go(page + 1)} aria-label="Next page">
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+    </nav>
+  );
+}
 
 function Row({ title, eyebrow, items, cardProps, action }) {
   if (!items.length) return null;
@@ -85,6 +124,11 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
   const [size,setSize]=useState('');
   const [color,setColor]=useState('');
   const [page,setPage]=useState(0);
+  const [trackedCategory, setTrackedCategory] = useState(category);
+  if (trackedCategory !== category) {
+    setTrackedCategory(category);
+    setPage(0);
+  }
   const [retryNonce,setRetryNonce]=useState(0);
   const [results,setResults]=useState({products:[],loading:true,error:'',count:0});
   useEffect(()=>{
@@ -93,7 +137,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
       setResults(s=>({...s,loading:true,error:''}));
       const bounds={all:{},u100:{maxPrice:99.99},'100-150':{minPrice:100,maxPrice:150},'150-200':{minPrice:150.01,maxPrice:200},o200:{minPrice:200.01}}[price];
       try {
-        const result=await shoesAPI.search({q:search,category,brand,gender,sort,inStock:String(inStock),...bounds,...(size?{size}:{}),...(color?{color}:{}),limit:48,offset:page*48},{signal:controller.signal});
+        const result=await shoesAPI.search({q:search,category,brand,gender,sort,inStock:String(inStock),...bounds,...(size?{size}:{}),...(color?{color}:{}),limit:PAGE_SIZE,offset:page*PAGE_SIZE},{signal:controller.signal});
         if(!controller.signal.aborted)setResults({...result,loading:false,error:''});
       }catch(e){if(!controller.signal.aborted)setResults({products:[],loading:false,error:e.message,count:0});}
     },250);
@@ -359,7 +403,7 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
             </button>
           </div>
         ) : filtered.length ? (
-          <div className="product-grid">
+          <div className="product-grid" id="catalog-grid">
             {filtered.map((p) => (
               <ProductCard key={p.id} product={p} {...cardProps(p)} />
             ))}
@@ -376,7 +420,15 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
             </button>
           </div>
         )}
-        {results.count>48 && <nav aria-label="Search pages"><button disabled={page===0} onClick={()=>setPage(p=>p-1)}>Previous</button><span> Page {page+1} </span><button disabled={(page+1)*48>=results.count} onClick={()=>setPage(p=>p+1)}>Next</button></nav>}
+        <CatalogPager
+          page={page}
+          pageSize={PAGE_SIZE}
+          total={favoritesOnly ? filtered.length : results.count}
+          onPage={(next) => {
+            setPage(next);
+            document.getElementById("catalog-grid")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}
+        />
       </section>
 
       {recentProducts.length > 0 && (

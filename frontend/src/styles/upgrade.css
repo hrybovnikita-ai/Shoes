@@ -1849,6 +1849,93 @@
   min-width: 0;
 }
 
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.footer-col h4 {
+  margin: 0 0 4px;
+}
+
+.footer-col a,
+.footer-col span {
+  display: block;
+}
+
+.catalog-pager {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 36px auto 8px;
+  width: 100%;
+}
+
+.catalog-pager-meta {
+  margin: 0;
+  color: var(--muted, #999);
+  font-size: 14px;
+}
+
+.catalog-pager-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.pager-btn {
+  min-width: 42px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #161616;
+  color: #fff;
+  font-weight: 700;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.pager-btn:hover:not(:disabled) {
+  border-color: #b5ff35;
+  transform: translateY(-1px);
+}
+
+.pager-btn.is-active {
+  background: #b5ff35;
+  color: #111;
+  border-color: #b5ff35;
+}
+
+.pager-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+:root[data-theme="light"] .pager-btn {
+  background: #fff;
+  color: #151515;
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+:root[data-theme="light"] .pager-btn.is-active {
+  background: #b5ff35;
+  color: #111;
+  border-color: #b5ff35;
+}
+
+@media (max-width: 640px) {
+  .pager-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 10px;
+  }
+}
+
 @media (max-width: 1100px) {
   .row-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2007,4 +2094,36 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+.image-credits-page .credits-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.image-credits-page .credits-table-wrap {
+  overflow-x: auto;
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.image-credits-page .credits-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.image-credits-page .credits-table th,
+.image-credits-page .credits-table td {
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.image-credits-page .mono {
+  font-family: ui-monospace, monospace;
+  word-break: break-word;
 }

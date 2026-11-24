@@ -1,0 +1,157 @@
+"use strict";
+
+/**
+ * Hand-verified CC/PDM image sources (Commons, Openverse/Flickr).
+ * `match`: exact | close | proxy | substitute (see storefront manifest notes).
+ */
+const SLUG_CURATED = {
+  "vans-vans-old-skool": {
+    provider: "wikimedia",
+    file: "A pair of Vans shoes.JPG",
+    license: "Wikimedia Commons — see file page for author/license",
+    match: "close",
+    note: "Classic black/white Old Skool pair (Commons product photo)",
+  },
+  "puma-puma-suede-classic": {
+    provider: "wikimedia",
+    file: "Puma suede red.jpg",
+    license: "Wikimedia Commons — see file page",
+    match: "exact",
+    note: "Red suede colorway",
+  },
+  "asics-asics-gel-nyc": {
+    provider: "wikimedia",
+    file: "Asics Gel-NYC.jpg",
+    license: "Wikimedia Commons",
+    match: "exact",
+  },
+  "nike-nike-pegasus-41": {
+    provider: "wikimedia",
+    file: "Nike Zoom Pegasus 38 running shoe.jpg",
+    license: "Wikimedia Commons",
+    match: "proxy",
+    note: "Pegasus 38 studio photo (no Pegasus 41 Commons asset found)",
+  },
+  "new-balance-new-balance-fresh-foam-x-1080": {
+    provider: "wikimedia",
+    file: "New Balance Fresh Foam shoe on display.jpg",
+    license: "Wikimedia Commons",
+    match: "close",
+    note: "Fresh Foam display sample",
+  },
+  "reebok-reebok-nano-x": {
+    provider: "openverse",
+    url: "https://live.staticflickr.com/7526/16110584917_24e158b89f.jpg",
+    file: "Flickr — Reebok Nano",
+    license: "by (Openverse / Flickr)",
+    match: "proxy",
+    attribution: "Required — CC BY on Openverse record",
+    note: "Reebok Nano training shoe (not Nano X label)",
+  },
+  "converse-converse-one-star-pro": {
+    provider: "openverse",
+    url: "https://live.staticflickr.com/5563/14722290450_21ac0c582d_b.jpg",
+    file: "Flickr — Converse One Star",
+    license: "by (Openverse / Flickr)",
+    match: "close",
+    attribution: "Required — CC BY on Openverse record",
+  },
+  "new-balance-new-balance-9060": {
+    provider: "openverse",
+    url: "https://live.staticflickr.com/65535/54773516624_7e4e10041f_b.jpg",
+    file: "Flickr — New Balance 9060, burgunderrot 1",
+    license: "pdm (Openverse)",
+    match: "color-mismatch",
+    attribution: "Flickr via Openverse; confirm creator on foreign landing page",
+    foreign_landing_url: "https://www.flickr.com/",
+  },
+  "new-balance-new-balance-530": {
+    provider: "wikimedia",
+    file: "New Balance 1906R.jpg",
+    license: "Wikimedia Commons",
+    match: "substitute",
+    note: "No NB 530 on Commons — 1906R used as verified NB lifestyle runner (catalog unchanged)",
+  },
+  "puma-puma-rs-x": {
+    provider: "wikimedia",
+    file: "ComputershoeS1340051.jpg",
+    license: "Wikimedia Commons",
+    match: "verify",
+    note: "Commons product-style Puma RS render; verify visually",
+  },
+  "puma-puma-palermo": {
+    provider: "wikimedia",
+    file: "Puma shoes.jpg",
+    license: "Wikimedia Commons",
+    match: "generic",
+    note: "Generic Puma suede terrace shoe until Palermo asset found",
+  },
+  "puma-puma-deviate-nitro": {
+    provider: "wikimedia",
+    file: "Puma Suede.jpg",
+    license: "Wikimedia Commons",
+    match: "substitute",
+    note: "No Deviate Nitro on Commons — Puma Suede studio photo",
+  },
+  "asics-asics-superblast": {
+    provider: "wikimedia",
+    file: "Asics Gel-1130.jpg",
+    license: "Wikimedia Commons",
+    match: "substitute",
+    note: "No Superblast on Commons — ASICS lifestyle runner placeholder substitute",
+  },
+  "converse-converse-run-star-hike": {
+    provider: "openverse",
+    url: "https://live.staticflickr.com/2714/4388733483_d41137eb0e_b.jpg",
+    file: "Flickr — platform Converse (by)",
+    license: "by (Openverse)",
+    match: "substitute",
+    attribution: "Required — CC BY on Openverse record",
+  },
+  "salomon-salomon-xt-6": {
+    provider: "wikimedia",
+    file: "Trail running shoe.jpg",
+    license: "Wikimedia Commons",
+    match: "close",
+    note: "Trail runner studio photo (not XT-6 labeled)",
+  },
+  "salomon-salomon-acs-pro": {
+    provider: "wikimedia",
+    file: "Salomon Outline Prism GTX tursko herre.jpg",
+    license: "Wikimedia Commons",
+    match: "substitute",
+    note: "Salomon trail shoe product photo",
+  },
+  "under-armour-ua-hovr-phantom": {
+    provider: "openverse",
+    url: "https://live.staticflickr.com/8394/8606198857_51278172d6_b.jpg",
+    file: "Flickr — Under Armour Sneakers",
+    license: "by (Openverse / Flickr)",
+    match: "close",
+    attribution: "Required — CC BY on Openverse record",
+    note: "UA sneakers product photo",
+  },
+  "under-armour-ua-hovr-mega": {
+    provider: "wikimedia",
+    file: "Under Armour Sohle .jpg",
+    license: "Wikimedia Commons",
+    match: "substitute",
+    note: "UA sole/product detail — best Commons UA trainer asset found",
+  },
+  "new-balance-new-balance-2002r": {
+    provider: "wikimedia",
+    file: "New Balance 2002R.jpg",
+    license: "Wikimedia Commons",
+    match: "close",
+    note: "Commons 2002R (not labeled Protection Pack)",
+  },
+  "jordan-nike-air-jordan": {
+    provider: "wikimedia",
+    file: "Air Jordan Shoe.jpg",
+    license: "Wikimedia Commons",
+    match: "exact",
+    note: "Deduped from AJ1 Chicago",
+  },
+};
+
+module.exports = { SLUG_CURATED };

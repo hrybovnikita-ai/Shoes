@@ -29,10 +29,13 @@ function demoProduct({
   rating,
   stock,
   customizable = false,
+  /** Keep WebP basename when product name/slug changes */
+  imageSlug,
+  slug: slugOverride,
 }) {
-  const slug = slugify(name, brand);
+  const slug = slugOverride || slugify(name, brand);
   const palette = colors || [color];
-  const image = publicImagePath(slug);
+  const image = publicImagePath(imageSlug || slug);
   return {
     id,
     slug,

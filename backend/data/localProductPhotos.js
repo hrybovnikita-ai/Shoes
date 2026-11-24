@@ -11,7 +11,7 @@ const LOCAL_SLUG_TO_FILE = {
   "nike-nike-dunk-low": "nike-dunk-low-panda.png",
   "nike-nike-blazer-mid": "nike-blazer-mid.png",
   "nike-nike-lebron-witness": "nike-lebron.png",
-  "jordan-nike-air-jordan": "jordan-1-chicago.png",
+  "nike-nike-street-edition": "nike-air-force-1.png",
   "jordan-air-jordan-1": "jordan-1-chicago.png",
   "jordan-air-jordan-4": "jordan-4-military-blue.png",
   "jordan-air-jordan-11": "jordan-11-bred-low.png",

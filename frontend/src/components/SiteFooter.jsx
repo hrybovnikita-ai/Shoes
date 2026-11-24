@@ -48,14 +48,15 @@ export default function SiteFooter({ go }) {
             </p>
             <p className="muted small">SHOES is a portfolio demo store. No real goods are shipped.</p>
           </div>
-          <div>
+          <div className="footer-col">
             <h4>Explore</h4>
             {link("Home", "/")}
             {link("Shop all", "/shop")}
             {link("Categories", "/categories")}
             {link("My Account", "/account")}
+            {link("Image credits", "/image-credits")}
           </div>
-          <div>
+          <div className="footer-col">
             <h4>Collections</h4>
             {categories.map((c) => (
               <span key={c.name}>{link(c.name, `/shop?category=${encodeURIComponent(c.name)}`)}</span>

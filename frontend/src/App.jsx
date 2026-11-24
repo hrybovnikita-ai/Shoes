@@ -46,6 +46,7 @@ const NotFoundPage = lazy(() => import("./pages/NotFoundPage.jsx"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard.jsx"));
 
 const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
+const ImageCreditsPage = lazy(() => import("./pages/ImageCreditsPage.jsx"));
 const CustomizerPage = lazy(() => import("./pages/CustomizerPage.jsx"));
 const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage.jsx"));
 
@@ -339,6 +340,11 @@ export default function App() {
           <Route
             path="/about"
             element={<AboutPage />}
+          />
+
+          <Route
+            path="/image-credits"
+            element={<ImageCreditsPage />}
           />
 
           <Route

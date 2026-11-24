@@ -29,11 +29,6 @@
     },
     "nike-nike-street-edition": {
       "slug": "nike-nike-street-edition",
-      "provider": "wikimedia",
-      "file": "Boty Nike.jpg",
-      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Boty_Nike.jpg?width=1200",
-      "license": "Wikimedia Commons (CC)",
-      "title": "Boty Nike.jpg",
       "validated": true
     },
     "nike-nike-air-max-90": {
@@ -112,18 +107,13 @@
       "slug": "vans-vans-old-skool",
       "provider": "wikimedia",
       "file": "A pair of Vans shoes.JPG",
-      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_pair_of_Vans_shoes.JPG?width=1200",
-      "license": "Wikimedia Commons (CC)",
-      "title": "A pair of Vans shoes.JPG",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/A_pair_of_Vans_shoes.JPG",
+      "license": "Wikimedia Commons — see file page for author/license",
       "validated": true
     },
     "vans-vans-knu-skool": {
       "slug": "vans-vans-knu-skool",
-      "provider": "wikimedia",
-      "file": "Paire de Vans Knu Skool Caldrone.jpg",
-      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Paire_de_Vans_Knu_Skool_Caldrone.jpg?width=1200",
-      "license": "Wikimedia Commons (CC)",
-      "title": "Paire de Vans Knu Skool Caldrone.jpg",
+      "license": "Wikimedia Commons file page (CC or public domain — confirm on the file page)",
       "validated": true
     },
     "vans-vans-authentic": {
@@ -179,99 +169,105 @@
       "license": "Wikimedia Commons (CC)",
       "title": "Salomon trail running shoes women Speedcross.jpg",
       "validated": true
+    },
+    "new-balance-new-balance-2002r": {
+      "slug": "new-balance-new-balance-2002r",
+      "provider": "wikimedia",
+      "file": "New Balance 2002R.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/New_Balance_2002R.jpg",
+      "license": "Wikimedia Commons",
+      "validated": true
+    },
+    "puma-puma-suede-classic": {
+      "slug": "puma-puma-suede-classic",
+      "provider": "wikimedia",
+      "file": "Puma suede red.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Puma_suede_red.jpg",
+      "license": "Wikimedia Commons — see file page",
+      "validated": true
+    },
+    "jordan-nike-air-jordan": {
+      "slug": "jordan-nike-air-jordan",
+      "provider": "wikimedia-search",
+      "file": "Nike Air Jordan XIII.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Nike_Air_Jordan_XIII.jpg",
+      "license": "Wikimedia Commons — verify file page",
+      "validated": true
+    },
+    "new-balance-new-balance-530": {
+      "slug": "new-balance-new-balance-530",
+      "provider": "wikimedia",
+      "file": "New Balance 1906R.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/New_Balance_1906R.jpg",
+      "license": "Wikimedia Commons",
+      "validated": true
+    },
+    "puma-puma-rs-x": {
+      "slug": "puma-puma-rs-x",
+      "provider": "wikimedia",
+      "file": "ComputershoeS1340051.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/ComputershoeS1340051.jpg",
+      "license": "Wikimedia Commons",
+      "validated": true
+    },
+    "asics-asics-gel-kayano-14": {
+      "slug": "asics-asics-gel-kayano-14",
+      "provider": "wikimedia-search",
+      "file": "Gel-Kayano 14 Artizia.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Gel-Kayano_14_Artizia.jpg",
+      "license": "Wikimedia Commons — verify file page",
+      "validated": true
+    },
+    "asics-asics-gel-1130": {
+      "slug": "asics-asics-gel-1130",
+      "provider": "wikimedia",
+      "file": "Asics Gel-1130.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Asics_Gel-1130.jpg",
+      "license": "Wikimedia Commons — verify file page",
+      "validated": true
+    },
+    "reebok-reebok-classic-leather": {
+      "slug": "reebok-reebok-classic-leather",
+      "provider": "wikimedia-search",
+      "file": "Classics Freestyle & ClassicLeather ReebokClassics.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Classics_Freestyle_%26_ClassicLeather_ReebokClassics.jpg",
+      "license": "Wikimedia Commons — verify file page",
+      "validated": true
+    },
+    "new-balance-new-balance-9060": {
+      "slug": "new-balance-new-balance-9060",
+      "provider": "openverse",
+      "file": "Flickr — New Balance 9060, burgunderrot 1",
+      "url": "https://live.staticflickr.com/65535/54773516624_7e4e10041f_b.jpg",
+      "license": "pdm (Openverse)",
+      "validated": true
+    },
+    "puma-puma-palermo": {
+      "slug": "puma-puma-palermo",
+      "provider": "wikimedia",
+      "file": "Puma shoes.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Puma_shoes.jpg",
+      "license": "Wikimedia Commons",
+      "validated": true
+    },
+    "asics-asics-gel-nyc": {
+      "slug": "asics-asics-gel-nyc",
+      "provider": "wikimedia",
+      "file": "Asics Gel-NYC.jpg",
+      "url": "https://commons.wikimedia.org/wiki/Special:FilePath/Asics_Gel-NYC.jpg",
+      "license": "Wikimedia Commons",
+      "validated": true
+    },
+    "converse-converse-run-star-hike": {
+      "slug": "converse-converse-run-star-hike",
+      "provider": "openverse",
+      "file": "Flickr — platform Converse (by)",
+      "url": "https://live.staticflickr.com/2714/4388733483_d41137eb0e_b.jpg",
+      "license": "by (Openverse)",
+      "validated": true
     }
   },
   "unresolved": [
-    {
-      "id": 2,
-      "slug": "adidas-adidas-ultraboost",
-      "name": "Adidas Ultraboost",
-      "brand": "Adidas"
-    },
-    {
-      "id": 3,
-      "slug": "jordan-nike-air-jordan",
-      "name": "Nike Air Jordan",
-      "brand": "Jordan"
-    },
-    {
-      "id": 13,
-      "slug": "new-balance-new-balance-530",
-      "name": "New Balance 530",
-      "brand": "New Balance"
-    },
-    {
-      "id": 15,
-      "slug": "new-balance-new-balance-9060",
-      "name": "New Balance 9060",
-      "brand": "New Balance"
-    },
-    {
-      "id": 16,
-      "slug": "new-balance-new-balance-2002r",
-      "name": "New Balance 2002R",
-      "brand": "New Balance"
-    },
-    {
-      "id": 17,
-      "slug": "puma-puma-suede-classic",
-      "name": "Puma Suede Classic",
-      "brand": "Puma"
-    },
-    {
-      "id": 18,
-      "slug": "puma-puma-rs-x",
-      "name": "Puma RS-X",
-      "brand": "Puma"
-    },
-    {
-      "id": 19,
-      "slug": "puma-puma-palermo",
-      "name": "Puma Palermo",
-      "brand": "Puma"
-    },
-    {
-      "id": 20,
-      "slug": "asics-asics-gel-kayano-14",
-      "name": "ASICS GEL-KAYANO 14",
-      "brand": "ASICS"
-    },
-    {
-      "id": 21,
-      "slug": "asics-asics-gel-1130",
-      "name": "ASICS GEL-1130",
-      "brand": "ASICS"
-    },
-    {
-      "id": 22,
-      "slug": "asics-asics-gel-nyc",
-      "name": "ASICS GEL-NYC",
-      "brand": "ASICS"
-    },
-    {
-      "id": 24,
-      "slug": "reebok-reebok-classic-leather",
-      "name": "Reebok Classic Leather",
-      "brand": "Reebok"
-    },
-    {
-      "id": 25,
-      "slug": "converse-converse-run-star-hike",
-      "name": "Converse Run Star Hike",
-      "brand": "Converse"
-    },
-    {
-      "id": 29,
-      "slug": "jordan-air-jordan-1",
-      "name": "Air Jordan 1",
-      "brand": "Jordan"
-    },
-    {
-      "id": 30,
-      "slug": "jordan-air-jordan-4",
-      "name": "Air Jordan 4",
-      "brand": "Jordan"
-    },
     {
       "id": 33,
       "slug": "salomon-salomon-xt-6",
@@ -331,37 +327,7 @@
       "slug": "converse-converse-one-star-pro",
       "name": "Converse One Star Pro",
       "brand": "Converse"
-    },
-    {
-      "id": 45,
-      "slug": "jordan-air-jordan-11",
-      "name": "Air Jordan 11",
-      "brand": "Jordan"
-    },
-    {
-      "id": 46,
-      "slug": "nike-nike-lebron-witness",
-      "name": "Nike LeBron Witness",
-      "brand": "Nike"
-    },
-    {
-      "id": 47,
-      "slug": "nike-nike-blazer-mid",
-      "name": "Nike Blazer Mid",
-      "brand": "Nike"
-    },
-    {
-      "id": 48,
-      "slug": "adidas-adidas-stan-smith",
-      "name": "Adidas Stan Smith",
-      "brand": "Adidas"
-    },
-    {
-      "id": 50,
-      "slug": "hoka-hoka-speedgoat",
-      "name": "HOKA Speedgoat",
-      "brand": "HOKA"
     }
   ],
-  "generatedAt": "2026-11-24T15:01:37.394Z"
+  "generatedAt": "2026-11-24T21:45:31.205Z"
 }

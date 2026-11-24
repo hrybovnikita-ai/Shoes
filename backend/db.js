@@ -154,6 +154,40 @@ async function syncProductImages(client = pool) {
   return count;
 }
 
+/** Local dev: refresh catalog text/metadata from in-code catalog (does not change price/stock). */
+async function syncCatalogMetadata(client = pool) {
+  const expanded = await catalogColumnsReady(client);
+  if (!expanded) return 0;
+  let count = 0;
+  for (const p of products) {
+    const images = JSON.stringify(p.images || [p.image]);
+    const colors = JSON.stringify(p.colors || [p.color]);
+    const { rowCount } = await client.query(
+      `UPDATE shoes_products SET
+         slug = $2, name = $3, brand = $4, category = $5, gender = $6,
+         color = $7, colors = $8::jsonb, materials = $9, description = $10,
+         image = $11, images = $12::jsonb
+       WHERE id = $1`,
+      [
+        p.id,
+        p.slug,
+        p.name,
+        p.brand,
+        p.category,
+        p.gender,
+        p.color,
+        colors,
+        p.materials,
+        p.description,
+        p.image,
+        images,
+      ]
+    );
+    if (rowCount) count += rowCount;
+  }
+  return count;
+}
+
 function parseJsonArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === "string") {
@@ -258,6 +292,7 @@ module.exports = {
   seedProducts,
   seedVariants,
   syncProductImages,
+  syncCatalogMetadata,
   productRow,
   orderRow,
   parseItems,
