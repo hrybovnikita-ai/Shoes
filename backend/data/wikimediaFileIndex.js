@@ -52,6 +52,8 @@ const FILES = [
   "Converse One-Star.jpg",
   "Nano 3.0.jpg",
   "Reebok Nano 2.0.jpg",
+  "VANS shoe 04.jpg",
+  "VANS shoe 05.jpg",
   "Trail running shoe.jpg",
   "Salomon Outline Prism GTX tursko herre.jpg",
   "Under Armour Black Ice.jpg",

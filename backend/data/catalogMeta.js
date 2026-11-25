@@ -4,7 +4,12 @@ const EU_FULL = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46];
 const US_FULL = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 const UK_FULL = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
+const DEMO_STORE_NOTE =
+  "SHOES is a portfolio demo storefront. Listings are illustrative; no official brand affiliation and no physical goods ship.";
+
 const { publicImagePath } = require("./productPhotos");
+const { enrichProductGallery } = require("./productGalleryManifest");
+const { PRODUCT_COPY } = require("./productCopy");
 
 function slugify(name, brand) {
   return `${brand}-${name}`
@@ -25,18 +30,20 @@ function demoProduct({
   colors,
   materials,
   description,
+  shortIntro,
+  featureHighlights,
   imageSeed: _imageSeed,
   rating,
   stock,
   customizable = false,
-  /** Keep WebP basename when product name/slug changes */
   imageSlug,
   slug: slugOverride,
 }) {
   const slug = slugOverride || slugify(name, brand);
   const palette = colors || [color];
   const image = publicImagePath(imageSlug || slug);
-  return {
+  const copy = PRODUCT_COPY[id] || {};
+  const base = {
     id,
     slug,
     name,
@@ -48,7 +55,17 @@ function demoProduct({
     color,
     colors: palette,
     materials,
-    description: `${description} Demo listing for the SHOES store — not an official retailer product page.`,
+    description: copy.description || description,
+    shortIntro: copy.shortIntro || shortIntro || description,
+    featureHighlights:
+      copy.featureHighlights ||
+      featureHighlights || {
+        materials: materials || "Quality upper and rubber outsole.",
+        comfort: "Cushioned for daily wear.",
+        design: `${brand} heritage styling.`,
+        use: category === "Running" ? "Training and casual miles." : "Everyday streetwear.",
+      },
+    demoStoreNote: DEMO_STORE_NOTE,
     image,
     images: [image],
     sizeEu: EU_FULL,
@@ -58,6 +75,7 @@ function demoProduct({
     stock,
     customizable,
   };
+  return { ...base, ...enrichProductGallery(base) };
 }
 
-module.exports = { demoProduct, EU_FULL, US_FULL, UK_FULL, slugify, publicImagePath };
+module.exports = { demoProduct, EU_FULL, US_FULL, UK_FULL, slugify, publicImagePath, DEMO_STORE_NOTE };

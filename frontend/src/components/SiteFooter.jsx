@@ -59,7 +59,7 @@ export default function SiteFooter({ go }) {
           <div className="footer-col">
             <h4>Collections</h4>
             {categories.map((c) => (
-              <span key={c.name}>{link(c.name, `/shop?category=${encodeURIComponent(c.name)}`)}</span>
+              <span key={c.name}>{link(c.name, c.path || `/shop?category=${encodeURIComponent(c.name)}`)}</span>
             ))}
           </div>
           <div>

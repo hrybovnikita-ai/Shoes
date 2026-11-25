@@ -7,9 +7,9 @@ import ProductReviews from "./components/ProductReviews";
 import { LinesSkeleton } from "./components/Skeleton";
 import useDocumentMeta from "./hooks/useDocumentMeta";
 import { swatchStyle } from "./lib/colorSwatch";
-import ProductImage from "./components/ProductImage";
-import { money, SIZES, stockInfo } from "./lib/format";
+import { money, productImageSrc, SIZES, stockInfo } from "./lib/format";
 import { KEYS } from "./lib/storage";
+import { filterSlidesByColor, resolveProductGallery } from "./lib/productGallery";
 import SizeFinder from "./commerce/SizeFinder";
 import PricePanel from "./commerce/PricePanel";
 import useInventory from "./commerce/useInventory";
@@ -23,13 +23,15 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
   const inventory = useInventory(product?.id);
   const [sizeGuide, setSizeGuide] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
-  const [selectedColor, setSelectedColor] = useState(product?.color || "");
+  const [selectedColor, setSelectedColor] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [notification, setNotification] = useState("");
   const [related, setRelated] = useState([]);
   const [stickyBar, setStickyBar] = useState(false);
   const [cartPulse, setCartPulse] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
   const actionsRef = useRef(null);
+  const descRef = useRef(null);
 
   useEffect(() => {
     if (product) onViewed?.(product.id);
@@ -74,8 +76,16 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
     .filter(Boolean)
     .slice(0, 8);
 
+  const activeColor = selectedColor || product?.color || "";
+
+  const { slides: gallerySlides, limitation } = useMemo(() => resolveProductGallery(product), [product]);
+  const slides = useMemo(
+    () => filterSlidesByColor(gallerySlides, activeColor),
+    [gallerySlides, activeColor]
+  );
+
   const selectedVariant = inventory.data?.variants.find(
-    (v) => v.size === selectedSize && v.color === (selectedColor || product?.color)
+    (v) => v.size === selectedSize && v.color === activeColor
   );
   const stock = inventory.data?.managed
     ? selectedSize == null
@@ -103,7 +113,7 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
           brand: { "@type": "Brand", name: product.brand },
           category: product.category,
           color: product.color,
-          image: product.image,
+          image: slides[0]?.url || product.image,
           sku: `SHOES-${String(product.id).padStart(4, "0")}`,
           offers: {
             "@type": "Offer",
@@ -140,9 +150,6 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
     );
   }
 
-  const images = [...(Array.isArray(product.images) && product.images.length ? product.images : [product.image])].filter(
-    (img, i, arr) => img && arr.indexOf(img) === i
-  );
   const colors = inventory.data?.managed
     ? [...new Set(inventory.data.variants.map((v) => v.color))]
     : Array.isArray(product.colors) && product.colors.length
@@ -161,7 +168,7 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
     if (quantity > maxQuantity) return setNotification("Stock changed. Please reduce the quantity."), null;
     if (outOfStock) return setNotification("This product is out of stock."), null;
     if (selectedSize === null) return setNotification("Please select your EU shoe size."), null;
-    const color = selectedColor || colors[0];
+    const color = activeColor || colors[0];
     if (!color) return setNotification("Please select a color."), null;
     setNotification("");
     return { size: selectedSize, color, quantity };
@@ -191,13 +198,13 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
   const cardProps = (p) => ({ favorite: favorites.includes(p.id), onFavorite, onOpen, onQuickView });
   const sizeUnavailable = (size) =>
     inventory.data?.managed &&
-    !inventory.data.variants.some((v) => v.size === size && v.color === (selectedColor || colors[0]) && v.available > 0);
+    !inventory.data.variants.some((v) => v.size === size && v.color === (activeColor || colors[0]) && v.available > 0);
 
   return (
     <main className="shoe-product-page" id="main-content">
       <nav className="shoe-breadcrumb" aria-label="Breadcrumb">
-        <button type="button" onClick={() => navigate("/shop")}>
-          ← Shop
+        <button type="button" onClick={() => navigate("/")}>
+          Home
         </button>
         <span aria-hidden="true"> / </span>
         <button type="button" onClick={() => navigate(`/shop?category=${encodeURIComponent(product.category)}`)}>
@@ -207,7 +214,13 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
       </nav>
 
       <div className="shoe-product-layout">
-        <ProductGallery images={images} productName={product.name} badge={product.badge} discount={discount} />
+        <ProductGallery
+          slides={slides}
+          productName={product.name}
+          badge={product.badge}
+          discount={discount}
+          limitation={limitation}
+        />
 
         <section className="shoe-product-info" aria-label="Product details">
           <header className="shoe-info-head">
@@ -227,6 +240,27 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
                   : "Write the first review"}
               </a>
             </div>
+            {product.shortIntro && (
+              <p className={`shoe-intro${descExpanded ? " is-expanded" : ""}`}>{product.shortIntro}</p>
+            )}
+            {product.shortIntro && product.description && product.shortIntro !== product.description && (
+              <button
+                type="button"
+                className="shoe-read-more"
+                aria-expanded={descExpanded}
+                onClick={() => {
+                  if (descExpanded) {
+                    descRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  } else {
+                    setDescExpanded(true);
+                  }
+                }}
+              >
+                {descExpanded ? "Jump to full description" : "Read more"}
+                <span aria-hidden="true">{descExpanded ? " ↓" : " ∨"}</span>
+              </button>
+            )}
+            <ProductFeatureGrid highlights={product.featureHighlights} />
             <PriceRow price={price} oldPrice={oldPrice} discount={discount} info={info} />
           </header>
 
@@ -235,7 +269,7 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
             colors={colors}
             selectedSize={selectedSize}
             setSelectedSize={setSelectedSize}
-            selectedColor={selectedColor}
+            selectedColor={activeColor}
             setSelectedColor={setSelectedColor}
             setQuantity={setQuantity}
             setNotification={setNotification}
@@ -255,48 +289,54 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
             onFavorite={onFavorite}
             navigate={navigate}
           />
-
-          <div className="shoe-specs-grid" role="list">
-            <Spec icon="◎" term="Brand" value={product.brand} />
-            <Spec icon="▤" term="Category" value={product.category} />
-            <Spec icon="◉" term="Color" value={product.color} />
-            <Spec icon="⇄" term="EU sizes" value={product.sizes?.eu?.length ? product.sizes.eu.join(", ") : "36–46"} />
-            <Spec
-              icon="↔"
-              term="US / UK"
-              value={`${product.sizes?.us?.length ? `US ${product.sizes.us.join(", ")}` : "See guide"}${product.sizes?.uk?.length ? ` · UK ${product.sizes.uk.join(", ")}` : ""}`}
-            />
-            {product.gender && <Spec icon="⚥" term="Gender" value={product.gender} />}
-            <Spec icon="⌖" term="SKU" value={product.slug || `SHOES-${String(product.id).padStart(4, "0")}`} />
-            <Spec icon="✓" term="Availability" value={info.label} />
-          </div>
-
-          <div className="shoe-accordion-group">
-            {product.description && (
-              <details className="shoe-accordion" open>
-                <summary>Product description</summary>
-                <p>{product.description}</p>
-              </details>
-            )}
-            {product.materials && (
-              <details className="shoe-accordion">
-                <summary>Materials &amp; construction</summary>
-                <p>{product.materials}</p>
-              </details>
-            )}
-            <details className="shoe-accordion">
-              <summary>Shipping</summary>
-              <p>Free standard shipping on orders over $150. Demo store — tracking is simulated.</p>
-            </details>
-            <details className="shoe-accordion">
-              <summary>Returns</summary>
-              <p>30-day demo returns on unworn pairs. Card details are never stored on SHOES.</p>
-            </details>
-          </div>
         </section>
       </div>
 
-      <LowerSections product={product} relatedProducts={relatedProducts} recentProducts={recentProducts} cardProps={cardProps} />
+      <div className="shoe-product-stack">
+        <div className="shoe-specs-grid" role="list">
+          <Spec icon="◎" term="Brand" value={product.brand} />
+          <Spec icon="▤" term="Category" value={product.category} />
+          <Spec icon="◉" term="Color" value={activeColor || product.color} />
+          <Spec icon="⇄" term="EU sizes" value={product.sizes?.eu?.length ? product.sizes.eu.join(", ") : "36–46"} />
+          <Spec
+            icon="↔"
+            term="US / UK"
+            value={`${product.sizes?.us?.length ? `US ${product.sizes.us.join(", ")}` : "See guide"}${product.sizes?.uk?.length ? ` · UK ${product.sizes.uk.join(", ")}` : ""}`}
+          />
+          {product.gender && <Spec icon="⚥" term="Gender" value={product.gender} />}
+          <Spec icon="⌖" term="SKU" value={product.slug || `SHOES-${String(product.id).padStart(4, "0")}`} />
+          <Spec icon="✓" term="Availability" value={info.label} />
+        </div>
+
+        <section className="shoe-copy-block" aria-labelledby="desc-title" ref={descRef}>
+          <h2 id="desc-title">Product description</h2>
+          <p>{product.description}</p>
+          {product.demoStoreNote && <p className="shoe-demo-note">{product.demoStoreNote}</p>}
+        </section>
+
+        {product.materials && (
+          <section className="shoe-copy-block" aria-labelledby="materials-title">
+            <h2 id="materials-title">Materials &amp; construction</h2>
+            <p>{product.materials}</p>
+          </section>
+        )}
+
+        <div className="shoe-policy-grid">
+          <section className="shoe-copy-block" aria-labelledby="ship-title">
+            <h2 id="ship-title">Shipping</h2>
+            <p>Free standard shipping on orders over $150. Demo store — tracking is simulated.</p>
+          </section>
+          <section className="shoe-copy-block" aria-labelledby="returns-title">
+            <h2 id="returns-title">Returns</h2>
+            <p>30-day demo returns on unworn pairs. Card details are never stored on SHOES.</p>
+          </section>
+        </div>
+
+        <PricePanel product={product} />
+        <ProductReviews productId={product.id} />
+        <ProductCarousel eyebrow="YOU MAY ALSO LIKE" title="Related products" id="related" products={relatedProducts} cardProps={cardProps} />
+        <ProductCarousel eyebrow="YOUR HISTORY" title="Recently viewed" id="recent" products={recentProducts} cardProps={cardProps} />
+      </div>
 
       {sizeGuide && (
         <SizeFinder
@@ -314,6 +354,34 @@ function ProductDetails({ products = [], loading, onAddToCart, onViewed, favorit
         <StickyBar price={price} info={info} outOfStock={outOfStock} addToCart={addToCart} product={product} />
       )}
     </main>
+  );
+}
+
+const FEATURE_ICONS = { materials: "▦", comfort: "◎", design: "✦", use: "⚡" };
+
+function ProductFeatureGrid({ highlights }) {
+  if (!highlights) return null;
+  const items = [
+    { key: "materials", label: "Materials", value: highlights.materials },
+    { key: "comfort", label: "Comfort", value: highlights.comfort },
+    { key: "design", label: "Design", value: highlights.design },
+    { key: "use", label: "Recommended use", value: highlights.use },
+  ].filter((row) => row.value);
+  if (!items.length) return null;
+  return (
+    <div className="shoe-feature-grid" role="list">
+      {items.map((row) => (
+        <div key={row.key} className="shoe-feature-card" role="listitem">
+          <span className="shoe-feature-icon" aria-hidden="true">
+            {FEATURE_ICONS[row.key]}
+          </span>
+          <div>
+            <span className="shoe-feature-label">{row.label}</span>
+            <p className="shoe-feature-value">{row.value}</p>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -431,7 +499,7 @@ function PurchaseCard(props) {
           </button>
         )}
         <button type="button" className={`shoe-cart-btn ${cartPulse ? "is-success" : ""}`} disabled={outOfStock} onClick={addToCart}>
-          {cartPulse ? "Added ✓" : "+ Add to cart"}
+          <span className="shoe-action-label">{cartPulse ? "Added ✓" : "+ Add to cart"}</span>
         </button>
         <button type="button" className="shoe-buy-btn" disabled={outOfStock} onClick={buyNow}>
           Buy now →
@@ -495,28 +563,28 @@ function PriceRow({ price, oldPrice, discount, info }) {
   );
 }
 
-function LowerSections({ product, relatedProducts, recentProducts, cardProps }) {
-  return (
-    <div className="shoe-product-stack">
-      <PricePanel product={product} />
-      <ProductReviews productId={product.id} />
-      <ProductCarousel eyebrow="YOU MAY ALSO LIKE" title="Related products" id="related" products={relatedProducts} cardProps={cardProps} />
-      <ProductCarousel eyebrow="YOUR HISTORY" title="Recently viewed" id="recent" products={recentProducts} cardProps={cardProps} />
-    </div>
-  );
-}
-
 function StickyBar({ price, info, outOfStock, addToCart, product }) {
   return (
     <div className="shoe-mobile-bar" role="region" aria-label="Quick purchase">
       <div className="shoe-mobile-bar-meta">
-        <ProductImage src={product.image} alt="" width="48" height="48" />
-        <div>
-          <strong>{money(price)}</strong>
-          <span className={`stock-pill stock-${info.tone}`}>{info.label}</span>
+        <img
+          className="shoe-mobile-bar-thumb-img"
+          src={productImageSrc(product.image)}
+          alt=""
+          width={56}
+          height={56}
+          loading="lazy"
+          decoding="async"
+        />
+        <div className="shoe-mobile-bar-copy">
+          <span className="shoe-mobile-bar-name">{product.name}</span>
+          <div className="shoe-mobile-bar-price-row">
+            <strong>{money(price)}</strong>
+            <span className={`stock-pill stock-${info.tone}`}>{info.label}</span>
+          </div>
         </div>
       </div>
-      <button type="button" className="shoe-buy-btn" disabled={outOfStock} onClick={addToCart}>
+      <button type="button" className="shoe-buy-btn shoe-mobile-cta" disabled={outOfStock} onClick={addToCart}>
         Add to cart
       </button>
     </div>

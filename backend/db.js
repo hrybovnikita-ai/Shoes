@@ -1,6 +1,9 @@
 "use strict";
 const { Pool } = require("pg");
 const { products } = require("./data");
+const { enrichProductGallery } = require("./data/productGalleryManifest");
+const { PRODUCT_COPY } = require("./data/productCopy");
+const { DEMO_STORE_NOTE } = require("./data/catalogMeta");
 
 // The pool is created lazily so a missing DATABASE_URL never crashes the API
 // at import time (on Vercel that surfaced as FUNCTION_INVOCATION_FAILED with no
@@ -139,7 +142,7 @@ async function syncProductImages(client = pool) {
   const expanded = await catalogColumnsReady(client);
   let count = 0;
   for (const p of products) {
-    const images = JSON.stringify(p.images || [p.image]);
+    const images = JSON.stringify(p.gallery || p.images || [p.image]);
     if (expanded) {
       const { rowCount } = await client.query(
         `UPDATE shoes_products SET image = $2, images = $3::jsonb WHERE id = $1`,
@@ -160,7 +163,7 @@ async function syncCatalogMetadata(client = pool) {
   if (!expanded) return 0;
   let count = 0;
   for (const p of products) {
-    const images = JSON.stringify(p.images || [p.image]);
+    const images = JSON.stringify(p.gallery || p.images || [p.image]);
     const colors = JSON.stringify(p.colors || [p.color]);
     const { rowCount } = await client.query(
       `UPDATE shoes_products SET
@@ -201,9 +204,32 @@ function parseJsonArray(value) {
   return [];
 }
 
+function parseStoredGallery(images, fallbackImage) {
+  const raw = parseJsonArray(images);
+  const entries = raw
+    .map((entry) => {
+      if (typeof entry === "string") return { url: entry, angle: "primary", label: "Primary", verified: true };
+      if (entry && typeof entry === "object" && entry.url) return entry;
+      return null;
+    })
+    .filter(Boolean);
+  if (entries.length) {
+    return {
+      images: [...new Set(entries.map((e) => e.url))],
+      gallery: entries,
+    };
+  }
+  const enriched = enrichProductGallery({ slug: null, image: fallbackImage });
+  return { images: enriched.images, gallery: enriched.gallery };
+}
+
 function productRow(p) {
   const colors = parseJsonArray(p.colors);
-  const images = parseJsonArray(p.images);
+  const stored = parseStoredGallery(p.images, p.image);
+  const manifest = enrichProductGallery({ slug: p.slug, image: p.image });
+  const gallery = manifest.gallery?.length > 1 ? manifest.gallery : stored.gallery;
+  const images = [...new Set(gallery.map((g) => g.url).filter(Boolean))];
+  const copy = PRODUCT_COPY[p.id] || {};
   return {
     id: p.id,
     slug: p.slug || null,
@@ -211,7 +237,10 @@ function productRow(p) {
     brand: p.brand,
     category: p.category,
     gender: p.gender || null,
-    description: p.description || null,
+    description: copy.description || p.description || null,
+    shortIntro: copy.shortIntro || null,
+    featureHighlights: copy.featureHighlights || null,
+    demoStoreNote: DEMO_STORE_NOTE,
     materials: p.materials || null,
     price: Number(p.price),
     oldPrice: p.old_price == null ? null : Number(p.old_price),
@@ -228,6 +257,8 @@ function productRow(p) {
     customizable: Boolean(p.customizable),
     image: p.image,
     images: images.length ? images : p.image ? [p.image] : [],
+    gallery,
+    galleryLimitation: manifest.galleryLimitation,
     ...(p.review_count != null ? { reviewCount: Number(p.review_count) } : {}),
     ...(p.review_avg != null ? { reviewAverage: Number(p.review_avg) } : {}),
     ...(p.units_sold != null ? { unitsSold: Number(p.units_sold) } : {}),

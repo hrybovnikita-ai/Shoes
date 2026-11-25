@@ -28,7 +28,7 @@ export default function ProductCarousel({ eyebrow, title, products, cardProps, i
 
   if (!products.length) return null;
 
-  const few = products.length <= 2;
+  const few = products.length <= 5;
 
   return (
     <section className="shoe-carousel-section section" id={id} aria-labelledby={`${id}-title`}>

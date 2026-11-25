@@ -146,8 +146,13 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
   const filtered=results.products.filter(p=>!favoritesOnly||favorites.includes(p.id)).map(p=>({...p,fromApi:true}));
   const colors=[...new Set([...products.map(p=>p.color),...results.products.flatMap(p=>p.colors||[])])].filter(Boolean).sort();
 
-  const chooseCategory = (value) =>
-    navigate(value === "All" ? "/shop" : `/shop?category=${encodeURIComponent(value)}`);
+  const chooseCategory = (value) => {
+    if (value === "All") navigate("/shop");
+    else {
+      const item = categories.find((c) => c.name === value);
+      navigate(item?.path || `/shop?category=${encodeURIComponent(value)}`);
+    }
+  };
 
   const clearFilters = () => {
     setSearch("");
@@ -206,8 +211,8 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
         </div>
         <img
           className="hero-image"
-          src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200&auto=format&q=75"
-          alt="Red Nike sneaker on a red background"
+          src="/images/hero-sneaker-1200.webp"
+          alt="Nike Air Max 270 sneaker product photo"
           fetchPriority="high"
           width="1200"
           height="900"
@@ -246,8 +251,8 @@ export default function HomePage({ catalog, favorites, onFavorite, onOpen, onQui
         </div>
         <div className="category-grid">
           {categories.map((item) => (
-            <button type="button" key={item.name} className="category-card" onClick={() => chooseCategory(item.name)}>
-              <img src={`${item.image}&auto=format&q=70`} alt="" loading="lazy" decoding="async" width="700" height="500" />
+            <button type="button" key={item.name} className="category-card" onClick={() => navigate(item.path || `/shop?category=${encodeURIComponent(item.name)}`)}>
+              <img src={item.image} alt="" loading="lazy" decoding="async" width="700" height="500" />
               <span className="category-overlay">
                 <strong>{item.name}</strong>
                 <small>

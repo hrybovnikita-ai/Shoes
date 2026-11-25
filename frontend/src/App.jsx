@@ -49,6 +49,7 @@ const AboutPage = lazy(() => import("./pages/AboutPage.jsx"));
 const ImageCreditsPage = lazy(() => import("./pages/ImageCreditsPage.jsx"));
 const CustomizerPage = lazy(() => import("./pages/CustomizerPage.jsx"));
 const OrderTrackingPage = lazy(() => import("./pages/OrderTrackingPage.jsx"));
+const CategoryLandingPage = lazy(() => import("./pages/CategoryLandingPage.jsx"));
 
 // Loading screen
 function PageFallback() {
@@ -335,6 +336,11 @@ export default function App() {
           <Route
             path="/categories"
             element={<HomePage {...shared} recent={recent.recent} />}
+          />
+
+          <Route
+            path="/categories/:slug"
+            element={<CategoryLandingPage {...shared} />}
           />
 
           <Route

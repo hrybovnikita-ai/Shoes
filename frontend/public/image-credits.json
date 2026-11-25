@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-24T21:55:45.008Z",
+  "generatedAt": "2026-11-25T12:51:08.326Z",
   "credits": [
     {
       "productIds": [
@@ -181,78 +181,129 @@
     {
       "id": 1,
       "name": "Nike Air Max 270",
-      "slug": "nike-nike-air-max-270"
+      "slug": "nike-nike-air-max-270",
+      "source": "local",
+      "file": "nike-air-max-270.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 2,
       "name": "Adidas Ultraboost",
-      "slug": "adidas-adidas-ultraboost"
+      "slug": "adidas-adidas-ultraboost",
+      "source": "wikimedia",
+      "file": "Adidas Ultra Boost Shoes \"All White\".JPG",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 3,
       "name": "Nike Air Jordan",
       "slug": "jordan-nike-air-jordan",
       "source": "wikimedia",
-      "file": "Air Jordan Shoe.jpg",
-      "license": "Wikimedia Commons"
+      "file": "Nike Air Jordan.jpg",
+      "license": "Wikimedia Commons",
+      "match": "close",
+      "note": "Air Jordan studio (distinct from AJ1 Chicago listing)"
     },
     {
       "id": 4,
       "name": "New Balance 574 Classic",
-      "slug": "new-balance-new-balance-574-classic"
+      "slug": "new-balance-new-balance-574-classic",
+      "source": "wikimedia",
+      "file": "New Balance 574.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 5,
       "name": "Converse Chuck Taylor All Star",
-      "slug": "converse-converse-chuck-taylor-all-star"
+      "slug": "converse-converse-chuck-taylor-all-star",
+      "source": "wikimedia",
+      "file": "Converse All Star low top red.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 6,
-      "name": "Nike Street Edition",
-      "slug": "nike-nike-street-edition"
+      "name": "Nike Air Force 1 '07",
+      "slug": "nike-nike-air-force-1-07",
+      "source": "wikimedia",
+      "file": "Nike air Force 1 white on white.jpg",
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 7,
       "name": "Nike Air Max 90",
-      "slug": "nike-nike-air-max-90"
+      "slug": "nike-nike-air-max-90",
+      "source": "local",
+      "file": "nike-air-max-90.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 8,
-      "name": "Nike Air Force 1",
-      "slug": "nike-nike-air-force-1"
+      "name": "Nike Terminator Low",
+      "slug": "nike-nike-terminator-low",
+      "source": "wikimedia",
+      "file": "Nike Terminator Low.jpg",
+      "license": "Wikimedia Commons",
+      "match": "candidate"
     },
     {
       "id": 9,
       "name": "Nike Dunk Low",
-      "slug": "nike-nike-dunk-low"
+      "slug": "nike-nike-dunk-low",
+      "source": "local",
+      "file": "nike-dunk-low-panda.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 10,
       "name": "Adidas Samba OG",
-      "slug": "adidas-adidas-samba-og"
+      "slug": "adidas-adidas-samba-og",
+      "source": "wikimedia",
+      "file": "Adidas Samba OG.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 11,
       "name": "Adidas Campus 00s",
-      "slug": "adidas-adidas-campus-00s"
+      "slug": "adidas-adidas-campus-00s",
+      "source": "wikimedia",
+      "file": "Adidas Campus 00s.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 12,
       "name": "Adidas Gazelle",
-      "slug": "adidas-adidas-gazelle"
+      "slug": "adidas-adidas-gazelle",
+      "source": "wikimedia",
+      "file": "Adidas Gazelle.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 13,
-      "name": "New Balance 530",
-      "slug": "new-balance-new-balance-530",
+      "name": "New Balance 1906R",
+      "slug": "new-balance-new-balance-1906r",
       "source": "wikimedia",
       "file": "New Balance 1906R.jpg",
-      "license": "Wikimedia Commons"
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 14,
       "name": "New Balance 550",
-      "slug": "new-balance-new-balance-550"
+      "slug": "new-balance-new-balance-550",
+      "source": "wikimedia",
+      "file": "New Balance 550.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 15,
@@ -260,7 +311,9 @@
       "slug": "new-balance-new-balance-9060",
       "source": "openverse",
       "file": "Flickr — New Balance 9060, burgunderrot 1",
-      "license": "pdm (Openverse)"
+      "license": "pdm (Openverse)",
+      "attribution": "Flickr via Openverse",
+      "match": "exact"
     },
     {
       "id": 16,
@@ -268,7 +321,9 @@
       "slug": "new-balance-new-balance-2002r",
       "source": "wikimedia",
       "file": "New Balance 2002R.jpg",
-      "license": "Wikimedia Commons"
+      "license": "Wikimedia Commons",
+      "match": "close",
+      "note": "2002R studio product"
     },
     {
       "id": 17,
@@ -276,33 +331,46 @@
       "slug": "puma-puma-suede-classic",
       "source": "wikimedia",
       "file": "Puma suede red.jpg",
-      "license": "Wikimedia Commons — see file page"
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 18,
       "name": "Puma RS-X",
       "slug": "puma-puma-rs-x",
       "source": "wikimedia",
-      "file": "ComputershoeS1340051.jpg",
-      "license": "Wikimedia Commons"
+      "file": "Puma shoes.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 19,
-      "name": "Puma Palermo",
-      "slug": "puma-puma-palermo",
-      "source": "wikimedia",
-      "file": "Puma shoes.jpg",
-      "license": "Wikimedia Commons"
+      "name": "Puma Speedcat",
+      "slug": "puma-puma-speedcat",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Puma Puma Palermo product photo found"
     },
     {
       "id": 20,
       "name": "ASICS GEL-KAYANO 14",
-      "slug": "asics-asics-gel-kayano-14"
+      "slug": "asics-asics-gel-kayano-14",
+      "source": "wikimedia",
+      "file": "Gel-Kayano 14 Artizia.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 21,
-      "name": "ASICS GEL-1130",
-      "slug": "asics-asics-gel-1130"
+      "name": "ASICS GEL-Cumulus 22",
+      "slug": "asics-asics-gel-cumulus-22",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified ASICS ASICS GEL-CUMULUS 25 product photo found"
     },
     {
       "id": 22,
@@ -310,25 +378,37 @@
       "slug": "asics-asics-gel-nyc",
       "source": "wikimedia",
       "file": "Asics Gel-NYC.jpg",
-      "license": "Wikimedia Commons"
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 23,
       "name": "Reebok Club C 85",
-      "slug": "reebok-reebok-club-c-85"
+      "slug": "reebok-reebok-club-c-85",
+      "source": "wikimedia",
+      "file": "Reebok Royal Glide Ripple Clip shoe.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 24,
       "name": "Reebok Classic Leather",
-      "slug": "reebok-reebok-classic-leather"
+      "slug": "reebok-reebok-classic-leather",
+      "source": "wikimedia",
+      "file": "Classics Freestyle & ClassicLeather ReebokClassics.jpg",
+      "license": "Wikimedia Commons",
+      "match": "close",
+      "note": "Commons pair shot including Classic Leather"
     },
     {
       "id": 25,
-      "name": "Converse Run Star Hike",
-      "slug": "converse-converse-run-star-hike",
-      "source": "openverse",
-      "file": "Flickr — platform Converse (by)",
-      "license": "by (Openverse)"
+      "name": "Nike Dunk High Retro",
+      "slug": "nike-nike-dunk-high-retro",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Converse Converse Run Star Hike product photo found"
     },
     {
       "id": 26,
@@ -336,154 +416,422 @@
       "slug": "vans-vans-old-skool",
       "source": "wikimedia",
       "file": "A pair of Vans shoes.JPG",
-      "license": "Wikimedia Commons — see file page for author/license"
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 27,
       "name": "Vans Knu Skool",
-      "slug": "vans-vans-knu-skool"
+      "slug": "vans-vans-knu-skool",
+      "source": "wikimedia",
+      "file": "Paire de Vans Knu Skool Caldrone.jpg",
+      "license": "Wikimedia Commons",
+      "match": "close"
     },
     {
       "id": 28,
       "name": "Vans Authentic",
-      "slug": "vans-vans-authentic"
+      "slug": "vans-vans-authentic",
+      "source": "wikimedia",
+      "file": "Shoe - brand VANS. 01.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 29,
       "name": "Air Jordan 1",
-      "slug": "jordan-air-jordan-1"
+      "slug": "jordan-air-jordan-1",
+      "source": "local",
+      "file": "jordan-1-chicago.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 30,
       "name": "Air Jordan 4",
-      "slug": "jordan-air-jordan-4"
+      "slug": "jordan-air-jordan-4",
+      "source": "local",
+      "file": "jordan-4-military-blue.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 31,
       "name": "HOKA Clifton",
-      "slug": "hoka-hoka-clifton"
+      "slug": "hoka-hoka-clifton",
+      "source": "wikimedia",
+      "file": "Hoka Clifton 7 shoes.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 32,
       "name": "HOKA Bondi",
-      "slug": "hoka-hoka-bondi"
+      "slug": "hoka-hoka-bondi",
+      "source": "wikimedia",
+      "file": "Hoka Bondi 8 - chalk violet.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 33,
-      "name": "Salomon XT-6",
-      "slug": "salomon-salomon-xt-6",
-      "source": "wikimedia",
-      "file": "Trail running shoe.jpg",
-      "license": "Wikimedia Commons"
+      "name": "Salomon Snowcross ADV",
+      "slug": "salomon-salomon-snowcross-adv",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Salomon Salomon XT-6 product photo found"
     },
     {
       "id": 34,
-      "name": "Salomon ACS Pro",
-      "slug": "salomon-salomon-acs-pro",
+      "name": "Salomon Outline Prism GTX",
+      "slug": "salomon-salomon-outline-prism-gtx",
       "source": "wikimedia",
       "file": "Salomon Outline Prism GTX tursko herre.jpg",
-      "license": "Wikimedia Commons"
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 35,
       "name": "UA HOVR Phantom",
       "slug": "under-armour-ua-hovr-phantom",
       "source": "openverse",
-      "file": "Flickr — Under Armour Sneakers",
-      "license": "by (Openverse / Flickr)"
+      "file": "Flickr — my new UA HOVR phantom",
+      "license": "CC BY-SA 2.0 (Flickr via Openverse)",
+      "attribution": "Flickr via Openverse",
+      "match": "close",
+      "note": "UA HOVR Phantom (1st gen) Glacier Grey; product pair, no model wearing"
     },
     {
       "id": 36,
-      "name": "UA HOVR Mega",
-      "slug": "under-armour-ua-hovr-mega",
-      "source": "wikimedia",
-      "file": "Under Armour Sohle .jpg",
-      "license": "Wikimedia Commons"
+      "name": "UA HOVR Havoc",
+      "slug": "under-armour-ua-hovr-havoc",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Under Armour UA HOVR Mega product photo found"
     },
     {
       "id": 37,
-      "name": "Nike Pegasus 41",
-      "slug": "nike-nike-pegasus-41",
+      "name": "Nike Pegasus 38",
+      "slug": "nike-nike-pegasus-38",
       "source": "wikimedia",
       "file": "Nike Zoom Pegasus 38 running shoe.jpg",
-      "license": "Wikimedia Commons"
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 38,
       "name": "Adidas Adizero Boston",
-      "slug": "adidas-adidas-adizero-boston"
+      "slug": "adidas-adidas-adizero-boston",
+      "source": "wikimedia",
+      "file": "Adidas Adizero Boston 12 Taipei Marathon Collaboration Edition.jpeg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 39,
-      "name": "New Balance Fresh Foam X 1080",
-      "slug": "new-balance-new-balance-fresh-foam-x-1080",
-      "source": "wikimedia",
-      "file": "New Balance Fresh Foam shoe on display.jpg",
-      "license": "Wikimedia Commons"
+      "name": "New Balance Fresh Foam 1080",
+      "slug": "new-balance-new-balance-fresh-foam-1080",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified New Balance New Balance Fresh Foam X 1080 product photo found"
     },
     {
       "id": 40,
-      "name": "Puma Deviate Nitro",
-      "slug": "puma-puma-deviate-nitro",
-      "source": "wikimedia",
-      "file": "Puma Suede.jpg",
-      "license": "Wikimedia Commons"
+      "name": "Puma Smash Leather",
+      "slug": "puma-puma-smash-leather",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Puma Puma Deviate Nitro product photo found"
     },
     {
-      "id": 21,
+      "id": 41,
       "name": "ASICS GEL-1130",
-      "slug": "asics-asics-gel-1130"
+      "slug": "asics-asics-gel-1130",
+      "source": "wikimedia",
+      "file": "Asics Gel-1130.jpg",
+      "license": "Wikimedia Commons",
+      "match": "candidate"
     },
     {
       "id": 42,
-      "name": "Reebok Nano X",
-      "slug": "reebok-reebok-nano-x",
-      "source": "openverse",
-      "file": "Flickr — Reebok Nano",
-      "license": "by (Openverse / Flickr)"
+      "name": "Reebok Nano",
+      "slug": "reebok-reebok-nano",
+      "source": "wikimedia",
+      "file": "Nano 3.0.jpg",
+      "license": "Wikimedia Commons",
+      "match": "close",
+      "note": "Reebok CrossFit Nano 7 studio pair; Nano training line (not a specific Nano X SKU)"
     },
     {
       "id": 43,
-      "name": "Converse One Star Pro",
-      "slug": "converse-converse-one-star-pro",
-      "source": "openverse",
-      "file": "Flickr — Converse One Star",
-      "license": "by (Openverse / Flickr)"
+      "name": "Converse One Star",
+      "slug": "converse-converse-one-star",
+      "source": "wikimedia",
+      "file": "Converse One-Star.jpg",
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 44,
       "name": "Vans Sk8-Hi",
-      "slug": "vans-vans-sk8-hi"
+      "slug": "vans-vans-sk8-hi",
+      "source": "wikimedia",
+      "file": "Shoe - brand VANS. 02.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 45,
       "name": "Air Jordan 11",
-      "slug": "jordan-air-jordan-11"
+      "slug": "jordan-air-jordan-11",
+      "source": "local",
+      "file": "jordan-11-bred-low.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 46,
       "name": "Nike LeBron Witness",
-      "slug": "nike-nike-lebron-witness"
+      "slug": "nike-nike-lebron-witness",
+      "source": "local",
+      "file": "nike-lebron.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 47,
       "name": "Nike Blazer Mid",
-      "slug": "nike-nike-blazer-mid"
+      "slug": "nike-nike-blazer-mid",
+      "source": "local",
+      "file": "nike-blazer-mid.png",
+      "license": "local",
+      "match": "exact"
     },
     {
       "id": 48,
       "name": "Adidas Stan Smith",
-      "slug": "adidas-adidas-stan-smith"
+      "slug": "adidas-adidas-stan-smith",
+      "source": "wikimedia",
+      "file": "Stan Smith white and green.png",
+      "license": "Wikimedia Commons",
+      "match": "exact"
     },
     {
       "id": 49,
       "name": "Salomon Speedcross",
-      "slug": "salomon-salomon-speedcross"
+      "slug": "salomon-salomon-speedcross",
+      "source": "wikimedia",
+      "file": "Salomon trail running shoes women Speedcross.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
     },
     {
       "id": 50,
       "name": "HOKA Speedgoat",
-      "slug": "hoka-hoka-speedgoat"
+      "slug": "hoka-hoka-speedgoat",
+      "source": "wikimedia",
+      "file": "Hoka OneOne Challenger ATR 6.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
+    },
+    {
+      "id": 51,
+      "name": "Nike V2K",
+      "slug": "nike-nike-v2k",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Nike Nike Zoom Fly 5 product photo found"
+    },
+    {
+      "id": 52,
+      "name": "Adidas Samba Decon",
+      "slug": "adidas-adidas-samba-decon",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Adidas Adidas Supernova Rise product photo found"
+    },
+    {
+      "id": 53,
+      "name": "New Balance 515",
+      "slug": "new-balance-new-balance-515",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified New Balance New Balance 880v14 product photo found"
+    },
+    {
+      "id": 54,
+      "name": "Nike Cortez",
+      "slug": "nike-nike-cortez",
+      "source": "wikimedia",
+      "file": "Nike Cortez white with black swoosh.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
+    },
+    {
+      "id": 55,
+      "name": "Adidas Forum Low",
+      "slug": "adidas-adidas-forum-low",
+      "source": "wikimedia",
+      "file": "Adidas Forum High & Low.jpg",
+      "license": "Wikimedia Commons (CC)",
+      "match": "exact"
+    },
+    {
+      "id": 56,
+      "name": "New Balance 480",
+      "slug": "new-balance-new-balance-480",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified New Balance New Balance 327 product photo found"
+    },
+    {
+      "id": 57,
+      "name": "Nike Air Max Uptempo",
+      "slug": "nike-nike-air-max-uptempo",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Nike Nike Giannis Immortality 3 product photo found"
+    },
+    {
+      "id": 58,
+      "name": "Air Jordan Luka 2",
+      "slug": "jordan-air-jordan-luka-2",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Jordan Air Jordan Luka 3 product photo found"
+    },
+    {
+      "id": 59,
+      "name": "Air Jordan XIII Retro",
+      "slug": "jordan-air-jordan-xiii-retro",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Adidas Adidas Harden Vol. 7 product photo found"
+    },
+    {
+      "id": 60,
+      "name": "Nike SB Stefan Janoski",
+      "slug": "nike-nike-sb-stefan-janoski",
+      "source": "openverse",
+      "file": "Flickr — nike SB stefan janoski",
+      "license": "CC BY 2.0 (Flickr via Openverse)",
+      "attribution": "Flickr via Openverse",
+      "match": "close",
+      "note": "Nike SB Zoom Stefan Janoski; black/gold suede (catalog Black/White OG+ FD6757-001)"
+    },
+    {
+      "id": 61,
+      "name": "Nike SB Dunk Low Pro",
+      "slug": "nike-nike-sb-dunk-low-pro",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Adidas Adidas Busenitz product photo found"
+    },
+    {
+      "id": 62,
+      "name": "Vans Authentic",
+      "slug": "vans-vans-authentic-black",
+      "source": "placeholder",
+      "file": "placeholder.webp",
+      "license": "internal",
+      "match": "unresolved",
+      "note": "No verified Vans Vans Era product photo found"
+    },
+    {
+      "id": 63,
+      "name": "Nike Air Max 97",
+      "slug": "nike-nike-air-max-97",
+      "source": "cache",
+      "file": "nike-nike-air-max-97.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 64,
+      "name": "Nike Killshot 2",
+      "slug": "nike-nike-killshot-2",
+      "source": "cache",
+      "file": "nike-nike-killshot-2.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 65,
+      "name": "Reebok GL6000",
+      "slug": "reebok-reebok-gl6000",
+      "source": "cache",
+      "file": "reebok-reebok-gl6000.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 66,
+      "name": "Adidas Samba OG",
+      "slug": "adidas-adidas-samba-og-black",
+      "source": "cache",
+      "file": "adidas-adidas-samba-og-black.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 67,
+      "name": "Reebok Workout Plus",
+      "slug": "reebok-reebok-workout-plus",
+      "source": "cache",
+      "file": "reebok-reebok-workout-plus.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 68,
+      "name": "Puma Speedcat Ballet",
+      "slug": "puma-puma-speedcat-ballet",
+      "source": "cache",
+      "file": "puma-puma-speedcat-ballet.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 69,
+      "name": "Nike SB Dunk Low Pro",
+      "slug": "nike-nike-sb-dunk-low-pro-2023",
+      "source": "cache",
+      "file": "nike-nike-sb-dunk-low-pro-2023.webp",
+      "license": "local-cache",
+      "match": "cached"
+    },
+    {
+      "id": 70,
+      "name": "ASICS Gel-Lyte III",
+      "slug": "asics-asics-gel-lyte-iii",
+      "source": "cache",
+      "file": "asics-asics-gel-lyte-iii.webp",
+      "license": "local-cache",
+      "match": "cached"
     }
   ]
 }

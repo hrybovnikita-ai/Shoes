@@ -28,10 +28,16 @@ const SLUG_TO_FILE = {
   "hoka-hoka-clifton": "Hoka Clifton 7 shoes.jpg",
   "hoka-hoka-bondi": "Hoka Bondi 8 - chalk violet.jpg",
   "salomon-salomon-speedcross": "Salomon trail running shoes women Speedcross.jpg",
+  "reebok-reebok-classic-leather": "Classics Freestyle & ClassicLeather ReebokClassics.jpg",
   "reebok-reebok-club-c-85": "Reebok Royal Glide Ripple Clip shoe.jpg",
+  "puma-puma-rs-x": "Puma shoes.jpg",
+  "nike-nike-cortez": "Nike Cortez white with black swoosh.jpg",
+  "adidas-adidas-forum-low": "Adidas Forum High & Low.jpg",
   "hoka-hoka-speedgoat": "Hoka OneOne Challenger ATR 6.jpg",
   "adidas-adidas-stan-smith": "Adidas Stan Smith wht-blk.jpg",
   "adidas-adidas-ultraboost": "Adidas Ultra Boost Shoes \"All White\".JPG",
+  "asics-asics-gel-kayano-14": "Gel-Kayano 14 Artizia.jpg",
+  "nike-nike-blazer-mid": "Nike Blazer Mid '77 Vintage.jpg",
 };
 
 function wikimediaUrlForSlug(slug) {

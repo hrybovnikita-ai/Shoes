@@ -162,6 +162,7 @@ const PRIORITY_FIXES = [
 async function tryCurated(slug) {
   const meta = SLUG_CURATED[slug];
   if (!meta) return null;
+  if (meta.match === "proxy" || meta.match === "substitute") return null;
   if (meta.url) {
     const buf = await fetchBuf(meta.url);
     if (!buf) return null;

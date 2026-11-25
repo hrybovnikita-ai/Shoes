@@ -20,7 +20,7 @@ test.after(async () => {
 
 const order = (over = {}) => ({
   customer: customer(),
-  items: [{ id: 5, size: 40, color: "Black", quantity: 2 }],
+  items: [{ id: 5, size: 40, color: "Red", quantity: 2 }],
   promoCode: "",
   paymentMethod: "demo",
   ...over,
@@ -42,7 +42,7 @@ test("health, config and API index", async () => {
 
 test("product listing, search, filters, sorting, details, related", async () => {
   const all = await api(base, "GET", "/products");
-  assert.equal(all.body.count, 50);
+  assert.equal(all.body.count, 70);
   const s = await api(base, "GET", "/products?search=jordan");
   assert.ok(s.body.products.some((p) => /jordan/i.test(p.name)));
   const cat = await api(base, "GET", "/products?category=Running");

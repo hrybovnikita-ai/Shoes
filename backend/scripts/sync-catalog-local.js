@@ -9,6 +9,10 @@ const { pool, syncCatalogMetadata, syncProductImages } = require("../db");
 
 const url = process.env.DATABASE_URL || "";
 function assertLocalDatabase() {
+  if (process.env.SHOES_ALLOW_REMOTE_CATALOG_SYNC === "1") {
+    console.warn("⚠ Remote catalog sync enabled (metadata + images only; prices/stock unchanged).");
+    return;
+  }
   if (!url) throw new Error("DATABASE_URL missing");
   try {
     const u = new URL(url);
@@ -24,6 +28,9 @@ function assertLocalDatabase() {
 
 async function main() {
   assertLocalDatabase();
+  const { seedProducts } = require("../db");
+  await seedProducts();
+  console.log("seedProducts: ensured catalog rows (ON CONFLICT DO NOTHING)");
   const meta = await syncCatalogMetadata();
   const imgs = await syncProductImages();
   console.log(`syncCatalogMetadata: ${meta} rows`);

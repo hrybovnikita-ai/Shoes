@@ -20,6 +20,12 @@
     "sync:images": "node scripts/generate-placeholder.js && node scripts/sync-product-images.js",
     "sync:catalog-local": "node scripts/sync-catalog-local.js",
     "build:image-credits": "node scripts/build-image-credits-json.js",
+    "build:product-galleries": "node scripts/build-product-galleries.js",
+    "ingest:galleries": "node scripts/ingest-verified-galleries.js",
+    "apply:verified-images": "node scripts/apply-verified-images.js",
+    "rebuild:exact-images": "node scripts/rebuild-exact-catalog-images.js",
+    "refresh:image-manifest": "node scripts/refresh-image-manifest.js",
+    "db:catalog-status": "node scripts/db-catalog-status.js",
     "worker": "node commerce/worker.js"
   },
   "dependencies": {
